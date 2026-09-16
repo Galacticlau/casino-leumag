@@ -9,7 +9,7 @@
     "dev": "node --watch src/server.js",
     "seed:demo": "node scripts/seed-demo.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check src/db.js && node --check src/session-store.js && node --check src/services/ledger.js && node --check src/services/rounds.js && node --check src/public/admin-game.js && node --check src/public/wait.js"
+    "check": "node --check src/server.js && node --check src/db.js && node --check src/session-store.js && node --check src/services/ledger.js && node --check src/services/rounds.js && node --check src/public/admin-game.js && node --check src/public/wait.js && node --check scripts/seed-demo.js"
   },
   "engines": {
     "node": ">=20"
