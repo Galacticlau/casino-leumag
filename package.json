@@ -2,14 +2,14 @@
   "name": "casino-escolar",
   "version": "1.0.0",
   "private": true,
-  "description": "Aplicación escolar de juegos con moneda ficticia, QR y PostgreSQL embebido, sin Docker.",
+  "description": "Casino escolar con QR, rondas grupales y base local o PostgreSQL de Railway.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed:demo": "node scripts/seed-demo.js",
     "test": "node --test",
-    "check": "node --check src/server.js && node --check src/db.js && node --check src/session-store.js && node --check src/services/ledger.js"
+    "check": "node --check src/server.js && node --check src/db.js && node --check src/session-store.js && node --check src/services/ledger.js && node --check src/services/rounds.js && node --check src/public/admin-game.js && node --check src/public/wait.js"
   },
   "engines": {
     "node": ">=20"
@@ -23,6 +23,7 @@
     "express-rate-limit": "^8.1.0",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
+    "pg": "^8.23.0",
     "qrcode": "^1.5.4"
   }
 }
