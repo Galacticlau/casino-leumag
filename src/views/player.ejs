@@ -1,0 +1,39 @@
+<%- include('partials/header') %>
+<section class="dashboard-head">
+  <div>
+    <span class="eyebrow">Cuenta de participante</span>
+    <h1>Hola, <%= player.display_name %></h1>
+    <p class="muted">Para jugar, escanea el QR que está en cada puesto.</p>
+  </div>
+  <div class="balance-card">
+    <span>Saldo disponible</span>
+    <strong><%= formatNumber(player.balance) %></strong>
+    <small><%= settings.currency_name %></small>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-title">
+    <div><span class="eyebrow">Trazabilidad</span><h2>Mis últimos movimientos</h2></div>
+  </div>
+  <% if (!transactions.length) { %>
+    <div class="empty-state">Aún no tienes movimientos. Escanea el QR de un juego para comenzar.</div>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Juego</th><th>Movimiento</th><th>Saldo</th></tr></thead>
+        <tbody>
+          <% transactions.forEach((tx) => { %>
+            <tr>
+              <td><%= formatDate(tx.created_at) %></td>
+              <td><%= tx.game_name || tx.note || 'Administración' %></td>
+              <td class="amount <%= tx.amount > 0 ? 'positive' : 'negative' %>"><%= tx.amount > 0 ? '+' : '' %><%= formatNumber(tx.amount) %></td>
+              <td><%= formatNumber(tx.balance_after) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+<%- include('partials/footer') %>

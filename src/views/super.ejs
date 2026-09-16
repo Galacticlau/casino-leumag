@@ -1,0 +1,175 @@
+<%- include('partials/header') %>
+<section class="dashboard-head">
+  <div><span class="eyebrow">Control general</span><h1><%= settings.event_name %></h1><p class="muted">Configura cuentas, puestos y movimientos desde un único lugar.</p></div>
+  <a class="button button-primary" href="/super/qrs">Ver e imprimir QR</a>
+</section>
+
+<section class="stats-grid">
+  <article><span>Participantes</span><strong><%= totals.players %></strong></article>
+  <article><span><%= settings.currency_name %> en circulación</span><strong><%= formatNumber(totals.circulating) %></strong></article>
+  <article><span>Movimientos registrados</span><strong><%= formatNumber(totals.transaction_count) %></strong></article>
+</section>
+
+<nav class="anchor-nav" aria-label="Secciones de administración">
+  <a href="#usuarios">Cuentas</a><a href="#juegos">Juegos</a><a href="#movimientos">Movimientos</a><a href="#configuracion">Configuración</a>
+</nav>
+
+<section class="panel admin-section" id="usuarios">
+  <div class="section-title"><div><span class="eyebrow">Accesos</span><h2>Cuentas</h2></div></div>
+  <details class="create-box" open>
+    <summary>Crear una cuenta</summary>
+    <form method="post" action="/super/users" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Nombre visible<input name="displayName" required maxlength="80" placeholder="Ej.: Mesa Ruleta"></label>
+      <label>Usuario<input name="username" required pattern="[a-zA-Z0-9._-]{3,40}" placeholder="Ej.: mesa1"></label>
+      <label>Clave temporal<input type="password" name="password" required minlength="6"></label>
+      <label>Tipo de cuenta
+        <select name="role"><option value="player">Participante</option><option value="game_admin">Encargado de juego</option><option value="superadmin">Administración general</option></select>
+      </label>
+      <button class="button button-primary" type="submit">Crear cuenta</button>
+    </form>
+  </details>
+
+  <details class="create-box">
+    <summary>Generar muchas cuentas y descargar las claves</summary>
+    <p class="help">Crea cuentas anónimas numeradas y descarga un archivo CSV para repartir los accesos.</p>
+    <form method="post" action="/super/users/generate" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Prefijo de usuario<input name="prefix" value="jugador" required pattern="[a-z][a-z0-9_-]{1,20}"></label>
+      <label>Nombre visible base<input name="namePrefix" value="Participante" required maxlength="50"></label>
+      <label>Número inicial<input type="number" name="start" value="1" min="1" required></label>
+      <label>Cantidad<input type="number" name="count" value="30" min="1" max="200" required></label>
+      <button class="button button-primary" type="submit">Crear y descargar CSV</button>
+    </form>
+  </details>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Nombre</th><th>Usuario / rol</th><th>Saldo</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody>
+        <% users.forEach((user) => { %>
+          <tr>
+            <td><strong><%= user.display_name %></strong></td>
+            <td><code><%= user.username %></code><br><small><%= user.role === 'player' ? 'Participante' : user.role === 'game_admin' ? 'Encargado' : 'Administración' %></small></td>
+            <td><%= user.role === 'player' ? formatNumber(user.balance) : '—' %></td>
+            <td><span class="badge <%= user.active ? 'badge-success' : 'badge-muted' %>"><%= user.active ? 'Activa' : 'Inactiva' %></span></td>
+            <td>
+              <details class="action-menu">
+                <summary>Gestionar</summary>
+                <% if (user.role === 'player') { %>
+                  <form method="post" action="/super/users/<%= user.id %>/adjust" class="mini-form">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <label>Ajustar saldo<input type="number" name="amount" required placeholder="Ej.: 100 o -50"></label>
+                    <input name="note" maxlength="180" placeholder="Motivo">
+                    <button class="button button-small" type="submit">Aplicar</button>
+                  </form>
+                <% } %>
+                <form method="post" action="/super/users/<%= user.id %>/reset-password" class="mini-form">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <label>Clave temporal nueva<input type="password" name="password" minlength="6" required></label>
+                  <button class="button button-small" type="submit">Restablecer clave</button>
+                </form>
+                <form method="post" action="/super/users/<%= user.id %>/toggle">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="button button-small button-danger" type="submit"><%= user.active ? 'Desactivar cuenta' : 'Reactivar cuenta' %></button>
+                </form>
+              </details>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel admin-section" id="juegos">
+  <div class="section-title"><div><span class="eyebrow">Puestos y QR</span><h2>Juegos</h2></div><a href="/super/qrs">Imprimir QR</a></div>
+  <details class="create-box" open>
+    <summary>Crear un juego</summary>
+    <form method="post" action="/super/games" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Nombre<input name="name" required maxlength="80" placeholder="Ej.: Ruleta matemática"></label>
+      <label>Enlace corto opcional<input name="slug" maxlength="90" placeholder="ruleta-matematica"></label>
+      <label>Monto mínimo<input type="number" name="minAmount" value="10" min="1" required></label>
+      <label>Monto máximo<input type="number" name="maxAmount" value="500" min="1" required></label>
+      <label class="span-two">Descripción<textarea name="description" maxlength="500" rows="2" placeholder="Reglas breves que verá el participante"></textarea></label>
+      <button class="button button-primary" type="submit">Crear juego</button>
+    </form>
+  </details>
+
+  <div class="card-grid admin-games">
+    <% games.forEach((game) => { %>
+      <article class="panel game-admin-card">
+        <div><span class="badge <%= game.active ? 'badge-success' : 'badge-muted' %>"><%= game.active ? 'Activo' : 'Inactivo' %></span><h3><%= game.name %></h3><p><%= game.description || 'Sin descripción' %></p></div>
+        <div class="card-actions">
+          <span><%= game.admin_count %> encargado(s)</span>
+          <a class="button button-small" href="/admin/game/<%= game.id %>">Abrir mesa</a>
+          <form method="post" action="/super/games/<%= game.id %>/toggle">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="button button-small button-secondary" type="submit"><%= game.active ? 'Desactivar' : 'Activar' %></button>
+          </form>
+        </div>
+      </article>
+    <% }) %>
+  </div>
+
+  <div class="two-columns">
+    <form method="post" action="/super/assignments" class="create-box form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <h3>Asignar un encargado</h3>
+      <label>Encargado<select name="userId" required><option value="">Seleccionar…</option><% users.filter(u => u.role === 'game_admin').forEach((u) => { %><option value="<%= u.id %>"><%= u.display_name %></option><% }) %></select></label>
+      <label>Juego<select name="gameId" required><option value="">Seleccionar…</option><% games.forEach((g) => { %><option value="<%= g.id %>"><%= g.name %></option><% }) %></select></label>
+      <button class="button button-primary" type="submit">Asignar</button>
+    </form>
+    <div class="create-box">
+      <h3>Asignaciones actuales</h3>
+      <% assignments.forEach((item) => { %>
+        <form method="post" action="/super/assignments/remove" class="assignment-row">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="userId" value="<%= item.user_id %>"><input type="hidden" name="gameId" value="<%= item.game_id %>">
+          <span><strong><%= item.display_name %></strong><br><small><%= item.game_name %></small></span>
+          <button class="icon-button" type="submit" aria-label="Eliminar asignación">×</button>
+        </form>
+      <% }) %>
+      <% if (!assignments.length) { %><p class="muted">Todavía no hay encargados asignados.</p><% } %>
+    </div>
+  </div>
+</section>
+
+<section class="panel admin-section" id="movimientos">
+  <div class="section-title"><div><span class="eyebrow">Auditoría</span><h2>Últimos movimientos</h2></div></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fecha</th><th>Participante</th><th>Juego</th><th>Cambio</th><th>Registró</th><th></th></tr></thead>
+      <tbody>
+        <% transactions.forEach((tx) => { %>
+          <tr>
+            <td><%= formatDate(tx.created_at) %></td><td><%= tx.player_name %></td><td><%= tx.game_name || tx.note || 'Ajuste' %></td>
+            <td class="amount <%= tx.amount > 0 ? 'positive' : 'negative' %>"><%= tx.amount > 0 ? '+' : '' %><%= formatNumber(tx.amount) %></td>
+            <td><%= tx.admin_name %></td>
+            <td>
+              <% if (tx.type !== 'reversal' && !tx.reversed) { %>
+                <form method="post" action="/super/transactions/<%= tx.id %>/reverse">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button-small button-secondary" type="submit">Revertir</button>
+                </form>
+              <% } else { %><small class="muted"><%= tx.reversed ? 'Revertida' : 'Reversa' %></small><% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel admin-section" id="configuracion">
+  <div class="section-title"><div><span class="eyebrow">Parámetros generales</span><h2>Configuración</h2></div></div>
+  <form method="post" action="/super/settings" class="form-grid">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Nombre del evento<input name="eventName" value="<%= settings.event_name %>" required maxlength="80"></label>
+    <label>Nombre de la moneda<input name="currencyName" value="<%= settings.currency_name %>" required maxlength="30"></label>
+    <label>Saldo inicial de cuentas nuevas<input type="number" name="initialBalance" value="<%= settings.initial_balance %>" min="0" required></label>
+    <label class="checkbox-label"><input type="checkbox" name="allowNegative" <%= settings.allow_negative ? 'checked' : '' %>> Permitir saldo negativo</label>
+    <button class="button button-primary" type="submit">Guardar configuración</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

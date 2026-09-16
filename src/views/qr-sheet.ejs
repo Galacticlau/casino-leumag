@@ -1,0 +1,18 @@
+<%- include('partials/header') %>
+<section class="print-toolbar">
+  <div><span class="eyebrow">Material para los puestos</span><h1>QR de los juegos</h1><p>Imprime y ubica una tarjeta junto a cada notebook.</p></div>
+  <button class="button button-primary" id="print-button" type="button">Imprimir tarjetas</button>
+</section>
+<section class="qr-grid">
+  <% games.forEach((game) => { %>
+    <article class="qr-card">
+      <span class="eyebrow"><%= settings.event_name %></span>
+      <h2><%= game.name %></h2>
+      <img src="/qr/<%= game.id %>.png" alt="QR para acceder a <%= game.name %>">
+      <p>Escanea, inicia sesión y presiona<br><strong>«Avisar que estoy listo»</strong>.</p>
+      <small>Rango: <%= formatNumber(game.min_amount) %>–<%= formatNumber(game.max_amount) %> <%= settings.currency_name %></small>
+    </article>
+  <% }) %>
+</section>
+<script src="/print.js" defer></script>
+<%- include('partials/footer') %>

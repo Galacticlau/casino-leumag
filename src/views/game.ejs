@@ -1,0 +1,16 @@
+<%- include('partials/header') %>
+<section class="narrow-panel panel game-join">
+  <span class="eyebrow">Puesto de juego</span>
+  <h1><%= game.name %></h1>
+  <p><%= game.description || 'Consulta las reglas con la persona encargada del puesto.' %></p>
+  <dl class="game-facts">
+    <div><dt>Tu saldo</dt><dd><%= formatNumber(balance) %> <%= settings.currency_name %></dd></div>
+    <div><dt>Movimiento permitido</dt><dd><%= formatNumber(game.min_amount) %> a <%= formatNumber(game.max_amount) %></dd></div>
+  </dl>
+  <form method="post" action="/game/<%= game.slug %>/join">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="button button-primary button-wide button-large" type="submit">Avisar que estoy listo</button>
+  </form>
+  <p class="help">Tu nombre aparecerá en el notebook del puesto. El encargado registrará el resultado.</p>
+</section>
+<%- include('partials/footer') %>

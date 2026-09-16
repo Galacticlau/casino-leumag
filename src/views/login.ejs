@@ -1,0 +1,22 @@
+<%- include('partials/header') %>
+<section class="auth-wrap">
+  <div class="hero-card">
+    <span class="eyebrow">Experiencia estudiantil</span>
+    <h1><%= settings.event_name %></h1>
+    <p>Participa en los juegos, revisa tus <%= settings.currency_name %> y consulta cada movimiento de tu cuenta.</p>
+    <div class="suit-row" aria-hidden="true"><span>♠</span><span>♦</span><span>♣</span><span>♥</span></div>
+  </div>
+  <form method="post" action="/login" class="panel auth-card">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <h2>Ingresar</h2>
+    <label>Usuario
+      <input name="username" autocomplete="username" required maxlength="40" autofocus>
+    </label>
+    <label>Clave
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button class="button button-primary button-wide" type="submit">Entrar</button>
+    <p class="help">Si no recuerdas tus datos, solicita ayuda a la administración del evento.</p>
+  </form>
+</section>
+<%- include('partials/footer') %>

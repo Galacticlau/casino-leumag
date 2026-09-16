@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+<section class="narrow-panel panel wait-card" data-wait-request="<%= joinRequest.id %>">
+  <div class="spinner" aria-hidden="true"></div>
+  <span class="eyebrow">Participación enviada</span>
+  <h1><%= joinRequest.game_name %></h1>
+  <% if (joinRequest.status === 'pending') { %>
+    <p id="wait-message">Espera mientras el encargado registra el resultado.</p>
+  <% } else if (joinRequest.status === 'used') { %>
+    <p>Esta participación ya fue procesada.</p>
+  <% } else { %>
+    <p>Esta participación ya no está activa.</p>
+  <% } %>
+  <div class="balance-inline">Saldo actual: <strong id="current-balance"><%= formatNumber(joinRequest.balance) %></strong> <%= settings.currency_name %></div>
+  <% if (joinRequest.status === 'pending') { %>
+    <form method="post" action="/player/request/<%= joinRequest.id %>/cancel">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="button button-secondary" type="submit">Cancelar espera</button>
+    </form>
+  <% } else { %>
+    <a class="button button-primary" href="/player">Volver a mi cuenta</a>
+  <% } %>
+</section>
+<script src="/wait.js" defer></script>
+<%- include('partials/footer') %>

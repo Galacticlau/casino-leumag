@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · Casino Escolar</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">♢ Casino Escolar</a>
+    <% if (currentUser) { %>
+      <nav aria-label="Navegación principal">
+        <% if (currentUser.role === 'player') { %><a href="/player">Mi cuenta</a><% } %>
+        <% if (currentUser.role === 'game_admin') { %><a href="/admin">Mis juegos</a><% } %>
+        <% if (currentUser.role === 'superadmin') { %>
+          <a href="/super">Administración</a>
+          <a href="/admin">Operar mesa</a>
+        <% } %>
+        <a href="/account/password">Cambiar clave</a>
+        <form method="post" action="/logout" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="link-button" type="submit">Salir</button>
+        </form>
+      </nav>
+    <% } %>
+  </header>
+  <main class="page-shell">
+    <% if (flash) { %>
+      <div class="flash flash-<%= flash.type %>" role="status"><%= flash.message %></div>
+    <% } %>

@@ -1,0 +1,16 @@
+<%- include('partials/header') %>
+<section class="dashboard-head">
+  <div><span class="eyebrow">Panel de encargado</span><h1>Selecciona un puesto</h1><p class="muted">Cada participante aparecerá después de escanear el QR.</p></div>
+</section>
+<section class="card-grid">
+  <% games.forEach((game) => { %>
+    <a class="game-card <%= game.active ? '' : 'disabled' %>" href="/admin/game/<%= game.id %>">
+      <span class="status-dot <%= game.active ? 'online' : '' %>"></span>
+      <h2><%= game.name %></h2>
+      <p><%= game.active ? 'Puesto activo' : 'Puesto desactivado' %></p>
+      <strong><%= game.pending_count %> esperando</strong>
+    </a>
+  <% }) %>
+  <% if (!games.length) { %><div class="empty-state">No tienes juegos asignados.</div><% } %>
+</section>
+<%- include('partials/footer') %>

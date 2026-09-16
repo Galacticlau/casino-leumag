@@ -1,0 +1,23 @@
+<%- include('partials/header') %>
+<section class="dashboard-head compact">
+  <div>
+    <a class="back-link" href="/admin">← Todos los juegos</a>
+    <span class="eyebrow">Registro rápido</span>
+    <h1><%= game.name %></h1>
+    <p class="muted">Rango permitido: <%= formatNumber(game.min_amount) %>–<%= formatNumber(game.max_amount) %> <%= settings.currency_name %>.</p>
+  </div>
+  <div class="live-pill"><span></span> Actualización automática</div>
+</section>
+
+<section id="queue-app"
+  data-game-id="<%= game.id %>"
+  data-min="<%= game.min_amount %>"
+  data-max="<%= game.max_amount %>"
+  data-csrf="<%= csrfToken %>"
+  data-currency="<%= settings.currency_name %>">
+  <div class="empty-state">Buscando participantes…</div>
+</section>
+
+<noscript><div class="notice">Activa JavaScript para ver la fila y registrar resultados rápidamente.</div></noscript>
+<script src="/admin-game.js" defer></script>
+<%- include('partials/footer') %>
