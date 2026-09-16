@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 let database;
 let initializationPromise;
 let mutexTail = Promise.resolve();
+const usesExternalPostgres = Boolean(String(process.env.DATABASE_URL || '').trim());
 
 function normalizeResult(result) {
   const returnedRows = result.rows?.length || 0;
@@ -32,9 +33,21 @@ async function ensureDatabase() {
   if (database) return database;
   if (!initializationPromise) {
     initializationPromise = (async () => {
+      if (usesExternalPostgres) {
+        const { Pool } = require('pg');
+        database = new Pool({
+          connectionString: process.env.DATABASE_URL,
+          ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
+          max: Number(process.env.DATABASE_POOL_SIZE || 12),
+          idleTimeoutMillis: 30_000,
+          connectionTimeoutMillis: 10_000
+        });
+        return database;
+      }
       const { PGlite } = await import('@electric-sql/pglite');
-      const dataDirectory = path.join(__dirname, '..', 'data', 'casino-db');
-      fs.mkdirSync(path.dirname(dataDirectory), { recursive: true });
+      const configuredDirectory = String(process.env.PGLITE_DATA_DIR || '').trim();
+      const dataDirectory = configuredDirectory || path.join(__dirname, '..', 'data', 'casino-db');
+      if (dataDirectory !== 'memory://') fs.mkdirSync(path.dirname(dataDirectory), { recursive: true });
       database = await PGlite.create(dataDirectory);
       return database;
     })();
@@ -45,6 +58,7 @@ async function ensureDatabase() {
 const pool = {
   async query(sql, parameters = []) {
     const db = await ensureDatabase();
+    if (usesExternalPostgres) return normalizeResult(await db.query(sql, parameters));
     const releaseLock = await acquireLock();
     try {
       return normalizeResult(await db.query(sql, parameters));
@@ -55,6 +69,7 @@ const pool = {
 
   async connect() {
     const db = await ensureDatabase();
+    if (usesExternalPostgres) return db.connect();
     const releaseLock = await acquireLock();
     let released = false;
     return {
@@ -71,22 +86,32 @@ const pool = {
   },
 
   async end() {
-    if (database) await database.close();
+    if (!database) return;
+    if (usesExternalPostgres) await database.end();
+    else await database.close();
   }
 };
 
 async function initializeDatabase() {
   const db = await ensureDatabase();
   const schemaPath = path.join(__dirname, '..', 'sql', 'schema.sql');
-  const releaseLock = await acquireLock();
-  try {
-    await db.exec(fs.readFileSync(schemaPath, 'utf8'));
-  } finally {
-    releaseLock();
+  const schema = fs.readFileSync(schemaPath, 'utf8');
+  if (usesExternalPostgres) {
+    await db.query(schema);
+  } else {
+    const releaseLock = await acquireLock();
+    try {
+      await db.exec(schema);
+    } finally {
+      releaseLock();
+    }
   }
 
   const { rows } = await pool.query('SELECT COUNT(*)::int AS total FROM users');
   if (rows[0].total === 0) {
+    if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_PASSWORD) {
+      throw new Error('Define ADMIN_PASSWORD antes de iniciar la aplicación en producción.');
+    }
     const username = (process.env.ADMIN_USER || 'admin').trim().toLowerCase();
     const password = process.env.ADMIN_PASSWORD || 'Admin2026!';
     const displayName = process.env.ADMIN_NAME || 'Administración';
@@ -105,4 +130,4 @@ async function getSettings() {
   return rows[0];
 }
 
-module.exports = { pool, initializeDatabase, getSettings };
+module.exports = { pool, initializeDatabase, getSettings, usesExternalPostgres };
