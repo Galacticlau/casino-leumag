@@ -92,6 +92,7 @@
       <label>Enlace corto opcional<input name="slug" maxlength="90" placeholder="ruleta-matematica"></label>
       <label>Monto mínimo<input type="number" name="minAmount" value="10" min="1" required></label>
       <label>Monto máximo<input type="number" name="maxAmount" value="500" min="1" required></label>
+      <label>Participantes por ronda<input type="number" name="maxPlayers" value="1" min="1" max="10" required><small>Entre 1 y 10.</small></label>
       <label class="span-two">Descripción<textarea name="description" maxlength="500" rows="2" placeholder="Reglas breves que verá el participante"></textarea></label>
       <button class="button button-primary" type="submit">Crear juego</button>
     </form>
@@ -100,9 +101,14 @@
   <div class="card-grid admin-games">
     <% games.forEach((game) => { %>
       <article class="panel game-admin-card">
-        <div><span class="badge <%= game.active ? 'badge-success' : 'badge-muted' %>"><%= game.active ? 'Activo' : 'Inactivo' %></span><h3><%= game.name %></h3><p><%= game.description || 'Sin descripción' %></p></div>
+        <div><span class="badge <%= game.active ? 'badge-success' : 'badge-muted' %>"><%= game.active ? 'Activo' : 'Inactivo' %></span><h3><%= game.name %></h3><p><%= game.description || 'Sin descripción' %></p><small>Capacidad actual: <strong><%= game.max_players %></strong> participante(s)</small></div>
         <div class="card-actions">
           <span><%= game.admin_count %> encargado(s)</span>
+          <form method="post" action="/super/games/<%= game.id %>/capacity" class="capacity-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <label>Capacidad<input type="number" name="maxPlayers" value="<%= game.max_players %>" min="1" max="10" required></label>
+            <button class="button button-small button-secondary" type="submit">Guardar</button>
+          </form>
           <a class="button button-small" href="/admin/game/<%= game.id %>">Abrir mesa</a>
           <form method="post" action="/super/games/<%= game.id %>/toggle">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">

@@ -6,6 +6,7 @@
   <dl class="game-facts">
     <div><dt>Tu saldo</dt><dd><%= formatNumber(balance) %> <%= settings.currency_name %></dd></div>
     <div><dt>Movimiento permitido</dt><dd><%= formatNumber(game.min_amount) %> a <%= formatNumber(game.max_amount) %></dd></div>
+    <div><dt>Participantes por ronda</dt><dd>Hasta <%= game.max_players %></dd></div>
   </dl>
   <form method="post" action="/game/<%= game.slug %>/join">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">

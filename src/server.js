@@ -13,12 +13,17 @@ const QRCode = require('qrcode');
 const { pool, initializeDatabase, getSettings } = require('./db');
 const { requireLogin, requireRole, redirectByRole } = require('./auth');
 const { applyTransaction, reverseTransaction } = require('./services/ledger');
+const { startRound, cancelRound, completeRound } = require('./services/rounds');
 const EmbeddedSessionStore = require('./session-store');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 const usesHttps = String(process.env.PUBLIC_URL || '').startsWith('https://');
+
+if (isProduction && !process.env.SESSION_SECRET) {
+  throw new Error('Define SESSION_SECRET antes de iniciar la aplicación en producción.');
+}
 
 function findLocalAddress() {
   try {
@@ -220,18 +225,54 @@ app.post('/game/:slug/join', requireRole('player'), asyncRoute(async (req, res) 
   const gameResult = await pool.query('SELECT id FROM games WHERE slug = $1 AND active = TRUE', [req.params.slug]);
   if (!gameResult.rowCount) throw new Error('El juego no está disponible.');
   const gameId = gameResult.rows[0].id;
-  let requestResult = await pool.query(
-    `UPDATE join_requests SET created_at = NOW(), expires_at = NOW() + INTERVAL '15 minutes'
-     WHERE user_id = $1 AND game_id = $2 AND status = 'pending' RETURNING id`,
-    [req.session.user.id, gameId]
-  );
-  if (!requestResult.rowCount) {
-    requestResult = await pool.query(
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `UPDATE join_requests SET status = 'expired'
+       WHERE user_id = $1 AND status = 'pending' AND expires_at <= NOW()`,
+      [req.session.user.id]
+    );
+    const existing = await client.query(
+      `SELECT r.id, r.game_id, r.status, g.name AS game_name
+       FROM join_requests r JOIN games g ON g.id = r.game_id
+       WHERE r.user_id = $1 AND r.status IN ('pending', 'playing')
+       FOR UPDATE OF r`,
+      [req.session.user.id]
+    );
+    if (existing.rowCount) {
+      const request = existing.rows[0];
+      if (Number(request.game_id) === Number(gameId) && request.status === 'pending') {
+        await client.query(
+          `UPDATE join_requests SET expires_at = NOW() + INTERVAL '15 minutes' WHERE id = $1`,
+          [request.id]
+        );
+      } else if (Number(request.game_id) !== Number(gameId)) {
+        setFlash(req, 'error', `Ya estás participando en ${request.game_name}. Finaliza esa participación antes de entrar a otro juego.`);
+      }
+      await client.query('COMMIT');
+      return res.redirect(`/player/wait/${request.id}`);
+    }
+    const requestResult = await client.query(
       'INSERT INTO join_requests (user_id, game_id) VALUES ($1, $2) RETURNING id',
       [req.session.user.id, gameId]
     );
+    await client.query('COMMIT');
+    return res.redirect(`/player/wait/${requestResult.rows[0].id}`);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    if (error.code === '23505') {
+      const existing = await pool.query(
+        `SELECT id FROM join_requests
+         WHERE user_id = $1 AND status IN ('pending', 'playing') LIMIT 1`,
+        [req.session.user.id]
+      );
+      if (existing.rowCount) return res.redirect(`/player/wait/${existing.rows[0].id}`);
+    }
+    throw error;
+  } finally {
+    client.release();
   }
-  res.redirect(`/player/wait/${requestResult.rows[0].id}`);
 }));
 
 app.get('/player/wait/:id', requireRole('player'), asyncRoute(async (req, res) => {
@@ -270,9 +311,11 @@ app.post('/player/request/:id/cancel', requireRole('player'), asyncRoute(async (
 
 app.get('/admin', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
   const query = req.session.user.role === 'superadmin'
-    ? `SELECT g.*, COUNT(r.id) FILTER (WHERE r.status = 'pending' AND r.expires_at > NOW())::int AS pending_count
+    ? `SELECT g.*, COUNT(r.id) FILTER (WHERE r.status = 'pending' AND r.expires_at > NOW())::int AS pending_count,
+       COUNT(r.id) FILTER (WHERE r.status = 'playing')::int AS playing_count
        FROM games g LEFT JOIN join_requests r ON r.game_id = g.id GROUP BY g.id ORDER BY g.name`
-    : `SELECT g.*, COUNT(r.id) FILTER (WHERE r.status = 'pending' AND r.expires_at > NOW())::int AS pending_count
+    : `SELECT g.*, COUNT(r.id) FILTER (WHERE r.status = 'pending' AND r.expires_at > NOW())::int AS pending_count,
+       COUNT(r.id) FILTER (WHERE r.status = 'playing')::int AS playing_count
        FROM games g JOIN game_admins ga ON ga.game_id = g.id
        LEFT JOIN join_requests r ON r.game_id = g.id
        WHERE ga.user_id = $1 GROUP BY g.id ORDER BY g.name`;
@@ -291,34 +334,82 @@ app.get('/admin/game/:id', requireRole('game_admin', 'superadmin'), asyncRoute(a
 app.get('/api/admin/game/:id/queue', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
   if (!(await canManageGame(req.session.user, req.params.id))) return res.status(403).json({ error: 'Sin permiso' });
   await pool.query(`UPDATE join_requests SET status = 'expired' WHERE game_id = $1 AND status = 'pending' AND expires_at <= NOW()`, [req.params.id]);
-  const result = await pool.query(
-    `SELECT r.id, r.created_at, r.expires_at, u.id AS user_id, u.display_name, u.username, u.balance
-     FROM join_requests r JOIN users u ON u.id = r.user_id
-     WHERE r.game_id = $1 AND r.status = 'pending' AND r.expires_at > NOW()
-     ORDER BY r.created_at ASC`,
-    [req.params.id]
-  );
-  res.json({ requests: result.rows });
+  const [queueResult, roundResult] = await Promise.all([
+    pool.query(
+      `SELECT r.id, r.created_at, r.expires_at, u.id AS user_id, u.display_name, u.username, u.balance
+       FROM join_requests r JOIN users u ON u.id = r.user_id
+       WHERE r.game_id = $1 AND r.status = 'pending' AND r.expires_at > NOW()
+       ORDER BY r.created_at ASC`,
+      [req.params.id]
+    ),
+    pool.query(
+      `SELECT gr.id, gr.created_at, r.id AS request_id, u.id AS user_id,
+        u.display_name, u.username, u.balance
+       FROM game_rounds gr
+       LEFT JOIN join_requests r ON r.round_id = gr.id AND r.status = 'playing'
+       LEFT JOIN users u ON u.id = r.user_id
+       WHERE gr.game_id = $1 AND gr.status = 'active'
+       ORDER BY r.created_at ASC`,
+      [req.params.id]
+    )
+  ]);
+  let activeRound = null;
+  if (roundResult.rowCount) {
+    activeRound = {
+      id: roundResult.rows[0].id,
+      created_at: roundResult.rows[0].created_at,
+      participants: roundResult.rows.filter((row) => row.request_id).map((row) => ({
+        request_id: row.request_id,
+        user_id: row.user_id,
+        display_name: row.display_name,
+        username: row.username,
+        balance: row.balance
+      }))
+    };
+  }
+  res.json({ requests: queueResult.rows, activeRound });
 }));
 
-app.post('/admin/game/:id/result', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
+app.post('/admin/game/:id/rounds/start', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
   if (!(await canManageGame(req.session.user, req.params.id))) throw new Error('No tienes permiso para administrar este juego.');
-  const gameResult = await pool.query('SELECT min_amount, max_amount FROM games WHERE id = $1 AND active = TRUE', [req.params.id]);
-  if (!gameResult.rowCount) throw new Error('El juego no está activo.');
-  const direction = req.body.outcome === 'loss' ? -1 : 1;
-  const absolute = Math.abs(Number(req.body.amount));
-  await applyTransaction({
-    userId: req.body.userId,
-    gameId: req.params.id,
-    rawAmount: direction * absolute,
-    createdBy: req.session.user.id,
-    type: 'game_result',
-    note: req.body.note || '',
-    requestId: req.body.requestId,
-    min: gameResult.rows[0].min_amount,
-    max: gameResult.rows[0].max_amount
-  });
-  setFlash(req, 'success', 'Resultado registrado correctamente.');
+  try {
+    await startRound({
+      gameId: req.params.id,
+      requestIds: req.body.requestIds,
+      createdBy: req.session.user.id
+    });
+    setFlash(req, 'success', 'Ronda iniciada correctamente.');
+  } catch (error) {
+    setFlash(req, 'error', error.message);
+  }
+  res.redirect(`/admin/game/${req.params.id}`);
+}));
+
+app.post('/admin/game/:id/rounds/:roundId/finish', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
+  if (!(await canManageGame(req.session.user, req.params.id))) throw new Error('No tienes permiso para administrar este juego.');
+  try {
+    const results = JSON.parse(String(req.body.results || '[]'));
+    await completeRound({
+      gameId: req.params.id,
+      roundId: req.params.roundId,
+      results,
+      createdBy: req.session.user.id
+    });
+    setFlash(req, 'success', 'Ronda cerrada y saldos actualizados.');
+  } catch (error) {
+    setFlash(req, 'error', error instanceof SyntaxError ? 'Los resultados enviados no son válidos.' : error.message);
+  }
+  res.redirect(`/admin/game/${req.params.id}`);
+}));
+
+app.post('/admin/game/:id/rounds/:roundId/cancel', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
+  if (!(await canManageGame(req.session.user, req.params.id))) throw new Error('No tienes permiso para administrar este juego.');
+  try {
+    await cancelRound({ gameId: req.params.id, roundId: req.params.roundId });
+    setFlash(req, 'success', 'Ronda cancelada. Los participantes volvieron a la fila.');
+  } catch (error) {
+    setFlash(req, 'error', error.message);
+  }
   res.redirect(`/admin/game/${req.params.id}`);
 }));
 
@@ -477,14 +568,18 @@ app.post('/super/games', requireRole('superadmin'), asyncRoute(async (req, res) 
   const slug = slugify(req.body.slug || name);
   const minAmount = Number(req.body.minAmount);
   const maxAmount = Number(req.body.maxAmount);
-  if (!name || !slug || !Number.isSafeInteger(minAmount) || !Number.isSafeInteger(maxAmount) || minAmount <= 0 || maxAmount < minAmount) {
-    setFlash(req, 'error', 'Revisa el nombre y los montos mínimo y máximo.');
+  const maxPlayers = Number(req.body.maxPlayers || 1);
+  if (!name || !slug || !Number.isSafeInteger(minAmount) || !Number.isSafeInteger(maxAmount)
+    || minAmount <= 0 || maxAmount < minAmount || !Number.isSafeInteger(maxPlayers)
+    || maxPlayers < 1 || maxPlayers > 10) {
+    setFlash(req, 'error', 'Revisa el nombre, los montos y la capacidad de 1 a 10 participantes.');
     return res.redirect('/super#juegos');
   }
   try {
     await pool.query(
-      `INSERT INTO games (name, slug, description, min_amount, max_amount) VALUES ($1, $2, $3, $4, $5)`,
-      [name, slug, String(req.body.description || '').trim(), minAmount, maxAmount]
+      `INSERT INTO games (name, slug, description, min_amount, max_amount, max_players)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [name, slug, String(req.body.description || '').trim(), minAmount, maxAmount, maxPlayers]
     );
     setFlash(req, 'success', 'Juego creado.');
   } catch (error) {
@@ -497,6 +592,17 @@ app.post('/super/games', requireRole('superadmin'), asyncRoute(async (req, res) 
 app.post('/super/games/:id/toggle', requireRole('superadmin'), asyncRoute(async (req, res) => {
   await pool.query('UPDATE games SET active = NOT active WHERE id = $1', [req.params.id]);
   setFlash(req, 'success', 'Estado del juego actualizado.');
+  res.redirect('/super#juegos');
+}));
+
+app.post('/super/games/:id/capacity', requireRole('superadmin'), asyncRoute(async (req, res) => {
+  const maxPlayers = Number(req.body.maxPlayers);
+  if (!Number.isSafeInteger(maxPlayers) || maxPlayers < 1 || maxPlayers > 10) {
+    setFlash(req, 'error', 'La capacidad debe estar entre 1 y 10 participantes.');
+  } else {
+    await pool.query('UPDATE games SET max_players = $1 WHERE id = $2', [maxPlayers, req.params.id]);
+    setFlash(req, 'success', 'Capacidad del juego actualizada.');
+  }
   res.redirect('/super#juegos');
 }));
 

@@ -4,7 +4,7 @@
     <a class="back-link" href="/admin">← Todos los juegos</a>
     <span class="eyebrow">Registro rápido</span>
     <h1><%= game.name %></h1>
-    <p class="muted">Rango permitido: <%= formatNumber(game.min_amount) %>–<%= formatNumber(game.max_amount) %> <%= settings.currency_name %>.</p>
+    <p class="muted">Hasta <%= game.max_players %> participantes · Rango: <%= formatNumber(game.min_amount) %>–<%= formatNumber(game.max_amount) %> <%= settings.currency_name %>.</p>
   </div>
   <div class="live-pill"><span></span> Actualización automática</div>
 </section>
@@ -13,9 +13,12 @@
   data-game-id="<%= game.id %>"
   data-min="<%= game.min_amount %>"
   data-max="<%= game.max_amount %>"
+  data-max-players="<%= game.max_players %>"
   data-csrf="<%= csrfToken %>"
   data-currency="<%= settings.currency_name %>">
-  <div class="empty-state">Buscando participantes…</div>
+  <div id="active-round"><div class="empty-state">Buscando ronda activa…</div></div>
+  <div class="section-title queue-section-title"><div><span class="eyebrow">Próximos turnos</span><h2>Fila de espera</h2></div></div>
+  <div id="waiting-queue"><div class="empty-state">Buscando participantes…</div></div>
 </section>
 
 <noscript><div class="notice">Activa JavaScript para ver la fila y registrar resultados rápidamente.</div></noscript>
