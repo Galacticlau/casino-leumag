@@ -11,7 +11,7 @@ const common = {
   formatNumber: (value) => String(value), formatDate: () => 'fecha'
 };
 const settings = { event_name: 'Casino Escolar', currency_name: 'fichas', initial_balance: 1000, allow_negative: false };
-const game = { id: 1, name: 'Ruleta', slug: 'ruleta', description: 'Descripción', min_amount: 10, max_amount: 500, active: true, pending_count: 0, admin_count: 1 };
+const game = { id: 1, name: 'Ruleta', slug: 'ruleta', description: 'Descripción', min_amount: 10, max_amount: 500, max_players: 6, active: true, pending_count: 0, playing_count: 0, admin_count: 1 };
 const user = { id: 2, username: 'jugador1', display_name: 'Jugador', role: 'player', balance: 1000, active: true, must_change_password: false };
 
 const cases = [
