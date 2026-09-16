@@ -38,9 +38,24 @@ CREATE TABLE IF NOT EXISTS games (
   description TEXT NOT NULL DEFAULT '',
   min_amount INTEGER NOT NULL DEFAULT 10 CHECK (min_amount > 0),
   max_amount INTEGER NOT NULL DEFAULT 500 CHECK (max_amount >= min_amount),
+  max_players INTEGER NOT NULL DEFAULT 1 CHECK (max_players BETWEEN 1 AND 10),
   active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE games
+  ADD COLUMN IF NOT EXISTS max_players INTEGER NOT NULL DEFAULT 1;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'games_max_players_check'
+  ) THEN
+    ALTER TABLE games
+      ADD CONSTRAINT games_max_players_check
+      CHECK (max_players BETWEEN 1 AND 10);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS game_admins (
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -48,19 +63,60 @@ CREATE TABLE IF NOT EXISTS game_admins (
   PRIMARY KEY (user_id, game_id)
 );
 
+CREATE TABLE IF NOT EXISTS game_rounds (
+  id BIGSERIAL PRIMARY KEY,
+  game_id BIGINT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active', 'completed', 'cancelled')),
+  created_by BIGINT NOT NULL REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_round_per_game
+ON game_rounds (game_id)
+WHERE status = 'active';
+
 CREATE TABLE IF NOT EXISTS join_requests (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   game_id BIGINT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'used', 'cancelled', 'expired')),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'playing', 'used', 'cancelled', 'expired')),
+  round_id BIGINT REFERENCES game_rounds(id),
   transaction_id BIGINT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '15 minutes')
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS one_pending_request_per_game
-ON join_requests (user_id, game_id)
-WHERE status = 'pending';
+ALTER TABLE join_requests
+  ADD COLUMN IF NOT EXISTS round_id BIGINT REFERENCES game_rounds(id);
+
+ALTER TABLE join_requests
+  DROP CONSTRAINT IF EXISTS join_requests_status_check;
+
+ALTER TABLE join_requests
+  ADD CONSTRAINT join_requests_status_check
+  CHECK (status IN ('pending', 'playing', 'used', 'cancelled', 'expired'));
+
+UPDATE join_requests
+SET status = 'expired'
+WHERE status = 'pending' AND expires_at <= NOW();
+
+WITH repeated AS (
+  SELECT id,
+    ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC, id DESC) AS position
+  FROM join_requests
+  WHERE status IN ('pending', 'playing')
+)
+UPDATE join_requests
+SET status = 'cancelled', round_id = NULL
+WHERE id IN (SELECT id FROM repeated WHERE position > 1);
+
+DROP INDEX IF EXISTS one_pending_request_per_game;
+
+CREATE UNIQUE INDEX IF NOT EXISTS one_active_request_per_player
+ON join_requests (user_id)
+WHERE status IN ('pending', 'playing');
 
 CREATE INDEX IF NOT EXISTS join_requests_game_status_idx
 ON join_requests (game_id, status, created_at);
