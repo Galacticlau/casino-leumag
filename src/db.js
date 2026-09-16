@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
 
 let database;
@@ -113,7 +114,8 @@ async function initializeDatabase() {
       throw new Error('Define ADMIN_PASSWORD antes de iniciar la aplicación en producción.');
     }
     const username = (process.env.ADMIN_USER || 'admin').trim().toLowerCase();
-    const password = process.env.ADMIN_PASSWORD || 'Admin2026!';
+    const configuredPassword = String(process.env.ADMIN_PASSWORD || '').trim();
+    const password = configuredPassword || `Admin-${crypto.randomBytes(9).toString('base64url')}`;
     const displayName = process.env.ADMIN_NAME || 'Administración';
     const passwordHash = await bcrypt.hash(password, 12);
     await pool.query(
@@ -122,6 +124,7 @@ async function initializeDatabase() {
       [username, displayName, passwordHash]
     );
     console.log(`Cuenta administradora inicial creada: ${username}`);
+    if (!configuredPassword) console.log(`Clave temporal generada: ${password}`);
   }
 }
 
