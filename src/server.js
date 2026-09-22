@@ -19,7 +19,20 @@ const EmbeddedSessionStore = require('./session-store');
 const app = express();
 const port = Number(process.env.PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
-const usesHttps = String(process.env.PUBLIC_URL || '').startsWith('https://');
+
+function configuredPublicBaseUrl() {
+  const explicitUrl = String(process.env.PUBLIC_URL || '').trim().replace(/\/$/, '');
+  if (explicitUrl) return explicitUrl;
+
+  const railwayDomain = String(process.env.RAILWAY_PUBLIC_DOMAIN || '')
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+  return railwayDomain ? `https://${railwayDomain}` : '';
+}
+
+const configuredPublicUrl = configuredPublicBaseUrl();
+const usesHttps = configuredPublicUrl.startsWith('https://');
 
 if (isProduction && !process.env.SESSION_SECRET) {
   throw new Error('Define SESSION_SECRET antes de iniciar la aplicación en producción.');
@@ -41,8 +54,7 @@ function findLocalAddress() {
 }
 
 function publicBaseUrl(req) {
-  const configured = String(process.env.PUBLIC_URL || '').trim().replace(/\/$/, '');
-  if (configured) return configured;
+  if (configuredPublicUrl) return configuredPublicUrl;
   const requestedHost = req.get('host') || '';
   if (requestedHost && !requestedHost.startsWith('localhost') && !requestedHost.startsWith('127.0.0.1')) {
     return `${req.protocol}://${requestedHost}`;
