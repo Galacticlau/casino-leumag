@@ -158,10 +158,13 @@ Para producción configura al menos estas variables:
 ```text
 NODE_ENV=production
 DATABASE_URL=dirección entregada por PostgreSQL
-PUBLIC_URL=https://tu-aplicacion.up.railway.app
 SESSION_SECRET=una-clave-larga-y-aleatoria
 ADMIN_PASSWORD=una-clave-inicial-segura
 ```
+
+Railway entrega automáticamente `RAILWAY_PUBLIC_DOMAIN`; el programa lo utiliza para generar los enlaces y los códigos QR. `PUBLIC_URL` queda como variable opcional si posteriormente quieres utilizar un dominio propio.
+
+En **Settings → Public Networking**, selecciona **Generate Domain**. Si Railway solicita el puerto interno, escribe `3000`. La ruta de comprobación de salud es `/health`.
 
 `DATABASE_POOL_SIZE` tiene valor predeterminado `12`. No es necesario instalar Docker en el computador para desplegar esta versión.
 
