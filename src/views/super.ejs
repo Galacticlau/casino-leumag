@@ -56,6 +56,21 @@
             <td>
               <details class="action-menu">
                 <summary>Gestionar</summary>
+                <% if (Number(user.id) !== Number(currentUser.id)) { %>
+                  <form method="post" action="/super/users/<%= user.id %>/role" class="mini-form">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <label>Rol de la cuenta
+                      <select name="role" required>
+                        <option value="player" <%= user.role === 'player' ? 'selected' : '' %>>Participante</option>
+                        <option value="game_admin" <%= user.role === 'game_admin' ? 'selected' : '' %>>Encargado de juego</option>
+                        <option value="superadmin" <%= user.role === 'superadmin' ? 'selected' : '' %>>Administración general</option>
+                      </select>
+                    </label>
+                    <button class="button button-small" type="submit">Cambiar rol</button>
+                  </form>
+                <% } else { %>
+                  <p class="help">Tu propia cuenta de administración no puede cambiar de rol desde aquí.</p>
+                <% } %>
                 <% if (user.role === 'player') { %>
                   <form method="post" action="/super/users/<%= user.id %>/adjust" class="mini-form">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
