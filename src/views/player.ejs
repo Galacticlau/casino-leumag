@@ -16,15 +16,39 @@
   <div class="section-title">
     <div>
       <span class="eyebrow">Personaliza tu cuenta</span>
-      <h2>Tu nombre de usuario</h2>
+      <h2>Mis datos</h2>
     </div>
   </div>
+
   <div class="notice">
-    <strong>Importante:</strong> cuando personalices tu cuenta, usa como nombre de usuario el formato
-    <strong>nombre.apellido</strong>, todo en minúsculas y sin espacios.<br>
+    <strong>Importante:</strong> usa como nombre de usuario el formato
+    <strong>nombre.apellido</strong>, todo en minúsculas, sin espacios y sin tildes.<br>
     Ejemplo: si te llamas Martina Soto, utiliza <strong>martina.soto</strong>.
   </div>
-  <p class="muted">Tu usuario actual es <strong><%= player.username %></strong>.</p>
+
+  <form method="post" action="/player/profile" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <label>
+      Nombre y apellido
+      <input type="text" name="displayName" value="<%= player.display_name %>" required maxlength="80" autocomplete="name">
+    </label>
+
+    <label>
+      Nombre de usuario
+      <input type="text" name="username" value="<%= player.username %>" required minlength="5" maxlength="40" autocomplete="username" placeholder="nombre.apellido">
+      <small class="muted">Ejemplo: martina.soto</small>
+    </label>
+
+    <label>
+      Clave actual para confirmar los cambios
+      <input type="password" name="currentPassword" required autocomplete="current-password">
+    </label>
+
+    <button class="button button-primary" type="submit">Guardar mis datos</button>
+  </form>
+
+  <p class="muted">¿También quieres cambiar tu clave? Puedes hacerlo desde <a href="/account/password">Cambiar clave</a>.</p>
 </section>
 
 <section class="panel">
