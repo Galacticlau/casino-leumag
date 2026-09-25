@@ -223,6 +223,44 @@ app.get('/player', requireRole('player'), asyncRoute(async (req, res) => {
   });
 }));
 
+app.post('/player/profile', requireRole('player'), asyncRoute(async (req, res) => {
+  const displayName = String(req.body.displayName || '').trim();
+  const username = String(req.body.username || '').trim().toLowerCase();
+  const currentPassword = String(req.body.currentPassword || '');
+
+  if (!displayName || displayName.length > 80) {
+    setFlash(req, 'error', 'Escribe tu nombre y apellido.');
+    return res.redirect('/player');
+  }
+  if (!/^[a-z0-9]+\.[a-z0-9._-]+$/.test(username) || username.length < 5 || username.length > 40) {
+    setFlash(req, 'error', 'El usuario debe seguir el formato nombre.apellido, sin espacios ni tildes.');
+    return res.redirect('/player');
+  }
+
+  const currentResult = await pool.query(
+    'SELECT password_hash FROM users WHERE id = $1',
+    [req.session.user.id]
+  );
+  if (!currentResult.rowCount || !(await bcrypt.compare(currentPassword, currentResult.rows[0].password_hash))) {
+    setFlash(req, 'error', 'La clave actual no es correcta.');
+    return res.redirect('/player');
+  }
+
+  try {
+    await pool.query(
+      `UPDATE users SET display_name = $1, username = $2, updated_at = NOW() WHERE id = $3`,
+      [displayName, username, req.session.user.id]
+    );
+    req.session.user.displayName = displayName;
+    req.session.user.username = username;
+    setFlash(req, 'success', 'Tu cuenta fue personalizada correctamente.');
+  } catch (error) {
+    if (error.code === '23505') setFlash(req, 'error', 'Ese nombre de usuario ya está siendo utilizado. Prueba con otro.');
+    else throw error;
+  }
+  return res.redirect('/player');
+}));
+
 app.get('/game/:slug', requireRole('player'), asyncRoute(async (req, res) => {
   const gameResult = await pool.query('SELECT * FROM games WHERE slug = $1 AND active = TRUE', [req.params.slug]);
   if (!gameResult.rowCount) return res.status(404).render('error', { title: 'Juego no disponible', message: 'El QR no corresponde a un juego activo.' });
