@@ -578,6 +578,45 @@ app.post('/super/users/generate', requireRole('superadmin'), asyncRoute(async (r
   res.send(`\uFEFF${csv}`);
 }));
 
+app.post('/super/users/:id/role', requireRole('superadmin'), asyncRoute(async (req, res) => {
+  const userId = Number(req.params.id);
+  const role = String(req.body.role || '');
+  const allowedRoles = ['player', 'game_admin', 'superadmin'];
+
+  if (!Number.isSafeInteger(userId) || !allowedRoles.includes(role)) {
+    setFlash(req, 'error', 'El rol seleccionado no es válido.');
+    return res.redirect('/super#usuarios');
+  }
+  if (userId === req.session.user.id) {
+    setFlash(req, 'error', 'No puedes cambiar el rol de tu propia cuenta mientras estás usando la administración.');
+    return res.redirect('/super#usuarios');
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const current = await client.query('SELECT role FROM users WHERE id = $1 FOR UPDATE', [userId]);
+    if (!current.rowCount) {
+      await client.query('ROLLBACK');
+      setFlash(req, 'error', 'La cuenta seleccionada no existe.');
+      return res.redirect('/super#usuarios');
+    }
+
+    await client.query('UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2', [role, userId]);
+    if (role !== 'game_admin') {
+      await client.query('DELETE FROM game_admins WHERE user_id = $1', [userId]);
+    }
+    await client.query('COMMIT');
+    setFlash(req, 'success', 'Rol de la cuenta actualizado.');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+  return res.redirect('/super#usuarios');
+}));
+
 app.post('/super/users/:id/toggle', requireRole('superadmin'), asyncRoute(async (req, res) => {
   if (Number(req.params.id) === req.session.user.id) {
     setFlash(req, 'error', 'No puedes desactivar tu propia cuenta.');
