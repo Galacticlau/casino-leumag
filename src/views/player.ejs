@@ -14,6 +14,21 @@
 
 <section class="panel">
   <div class="section-title">
+    <div>
+      <span class="eyebrow">Personaliza tu cuenta</span>
+      <h2>Tu nombre de usuario</h2>
+    </div>
+  </div>
+  <div class="notice">
+    <strong>Importante:</strong> cuando personalices tu cuenta, usa como nombre de usuario el formato
+    <strong>nombre.apellido</strong>, todo en minúsculas y sin espacios.<br>
+    Ejemplo: si te llamas Martina Soto, utiliza <strong>martina.soto</strong>.
+  </div>
+  <p class="muted">Tu usuario actual es <strong><%= player.username %></strong>.</p>
+</section>
+
+<section class="panel">
+  <div class="section-title">
     <div><span class="eyebrow">Trazabilidad</span><h2>Mis últimos movimientos</h2></div>
   </div>
   <% if (!transactions.length) { %>
