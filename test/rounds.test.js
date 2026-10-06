@@ -35,13 +35,13 @@ async function addRequest(userId, targetGame = gameId) {
 test.before(async () => {
   await initializeDatabase();
   const game = await pool.query(
-    `INSERT INTO games (name, slug, min_amount, max_amount, max_players)
-     VALUES ('Juego grupal', 'juego-grupal', 10, 500, 10) RETURNING id`
+    `INSERT INTO games (name, slug, min_amount, max_amount, max_players, bet_options)
+     VALUES ('Juego grupal', 'juego-grupal', 10, 500, 10, '[]') RETURNING id`
   );
   gameId = game.rows[0].id;
   const secondGame = await pool.query(
-    `INSERT INTO games (name, slug, min_amount, max_amount, max_players)
-     VALUES ('Segundo juego', 'segundo-juego', 10, 500, 2) RETURNING id`
+    `INSERT INTO games (name, slug, min_amount, max_amount, max_players, bet_options)
+     VALUES ('Segundo juego', 'segundo-juego', 10, 500, 2, '[]') RETURNING id`
   );
   secondGameId = secondGame.rows[0].id;
   administratorIds = [];

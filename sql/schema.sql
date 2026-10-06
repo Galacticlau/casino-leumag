@@ -165,3 +165,7 @@ DO $$ BEGIN
     INSERT INTO app_migrations (name) VALUES ('welcome-10000');
   END IF;
 END $$;
+
+ALTER TABLE games ADD COLUMN IF NOT EXISTS bet_options JSONB NOT NULL DEFAULT '["Participar"]'::jsonb;
+ALTER TABLE join_requests ADD COLUMN IF NOT EXISTS bet_amount INTEGER CHECK (bet_amount > 0);
+ALTER TABLE join_requests ADD COLUMN IF NOT EXISTS bet_option VARCHAR(60);

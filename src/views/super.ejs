@@ -135,6 +135,17 @@
     <% games.forEach((game) => { %>
       <article class="panel game-admin-card">
         <div><span class="badge <%= game.active ? 'badge-success' : 'badge-muted' %>"><%= game.active ? 'Activo' : 'Inactivo' %></span><h3><%= game.name %></h3><p><%= game.description || 'Sin descripción' %></p><small>Capacidad actual: <strong><%= game.max_players %></strong> participante(s)</small></div>
+        <% if (game.availableBetOptions?.length) { %>
+          <details class="create-box bet-settings">
+            <summary>Opciones para apostar</summary>
+            <form method="post" action="/super/games/<%= game.id %>/bet-options" class="form-stack">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <label>Un botón por línea<textarea name="options" rows="4" required maxlength="750"><%= game.availableBetOptions.join('\n') %></textarea></label>
+              <p class="help">Hasta 12 opciones. Ejemplo para bacará: Jugador, Banca y Empate, una por línea. Cambia las opciones cuando la mesa no tenga participaciones activas.</p>
+              <button class="button button-small button-secondary" type="submit">Guardar botonera</button>
+            </form>
+          </details>
+        <% } %>
         <div class="card-actions">
           <span><%= game.admin_count %> encargado(s)</span>
           <form method="post" action="/super/games/<%= game.id %>/capacity" class="capacity-form">

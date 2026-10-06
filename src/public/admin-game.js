@@ -36,6 +36,7 @@
     identity.append(element('h2', '', item.display_name), element('small', '', `@${item.username}`));
     const balance = element('div', 'queue-balance');
     balance.append(element('span', '', 'Saldo'), element('strong', '', format(item.balance)));
+    if (item.bet_amount) identity.append(element('div', 'player-bet-badge', `${item.bet_option} · $${format(item.bet_amount)}`));
     head.append(identity, balance);
     return head;
   }
@@ -133,9 +134,22 @@
       const outcomeLabel = element('div', '', 'Resultado');
       const outcome = outcomeSelect();
       outcomeLabel.append(outcome);
-      const amountLabel = element('div', '', `Cantidad de ${currency}`);
+      const amountLabel = element('div', '', item.bet_amount ? 'Ganancia neta (si ganó)' : `Cantidad de ${currency}`);
       const amount = amountInput();
+      if (item.bet_amount) amount.value = item.bet_amount;
       amountLabel.append(amountControls(amount));
+      if (item.bet_amount) {
+        const updateLoss = () => {
+          const loss = outcome.querySelector('input').value === 'loss';
+          if (loss) amount.value = item.bet_amount;
+          amount.readOnly = loss;
+          amountLabel.querySelectorAll('button').forEach(button => { button.disabled = loss; });
+          amount.dispatchEvent(new Event('input'));
+        };
+        outcome.querySelector('input').addEventListener('change', updateLoss);
+        card.dataset.betAmount = item.bet_amount;
+        amountLabel.append(element('small', '', 'Si perdió, se descuenta exactamente su apuesta. Si ganó, indica la ganancia sin incluir la devolución de la apuesta.'));
+      }
       fields.append(outcomeLabel, amountLabel);
       card.append(fields);
       grid.append(card);
@@ -164,7 +178,7 @@
     apply.addEventListener('click', () => {
       if (!bulkOutcome.querySelector('input').value || !bulkAmount.checkValidity()) { window.alert('Selecciona un resultado y un monto válido para todos.'); return; }
       form.querySelectorAll('.round-outcome').forEach((field) => { field.value = bulkOutcome.querySelector('input').value; field.dispatchEvent(new Event('change')); });
-      form.querySelectorAll('.round-amount').forEach((field) => { field.value = bulkAmount.value; field.dispatchEvent(new Event('input')); });
+      form.querySelectorAll('.round-amount').forEach((field) => { if (!field.readOnly) field.value = bulkAmount.value; field.dispatchEvent(new Event('input')); });
     });
     section.append(form);
 
@@ -249,11 +263,11 @@
       if (!response.ok) throw new Error('No se pudo actualizar');
       const data = await response.json();
       const roundSignature = JSON.stringify(data.activeRound
-        ? [data.activeRound.id, data.activeRound.participants.map((item) => [item.request_id, item.balance])]
+        ? [data.activeRound.id, data.activeRound.participants.map((item) => [item.request_id, item.balance, item.bet_amount, item.bet_option])]
         : null);
       const queueSignature = JSON.stringify([
         Boolean(data.activeRound),
-        data.requests.map((item) => [item.id, item.balance])
+        data.requests.map((item) => [item.id, item.balance, item.bet_amount, item.bet_option])
       ]);
       if (roundSignature !== lastRoundSignature) {
         lastRoundSignature = roundSignature;

@@ -12,6 +12,10 @@
   <% } else { %>
     <p id="wait-message" aria-live="polite">Esta participación ya no está activa.</p>
   <% } %>
+  <% if (joinRequest.bet_amount) { %>
+    <div class="bet-summary">Tu apuesta: <strong><%= joinRequest.bet_option %></strong> · <strong>$<%= formatNumber(joinRequest.bet_amount) %></strong></div>
+    <% if (joinRequest.status === 'pending') { %><p class="help">Para cambiarla, cancela la espera y vuelve a entrar al juego.</p><% } %>
+  <% } %>
   <div class="balance-inline">Saldo actual: <strong id="current-balance"><%= formatNumber(joinRequest.balance) %></strong> <%= settings.currency_name %></div>
   <% if (joinRequest.status === 'pending') { %>
     <form id="cancel-wait" method="post" action="/player/request/<%= joinRequest.id %>/cancel">

@@ -1,4 +1,5 @@
 const { pool } = require('../db');
+const { betOptions, validateBet } = require('./bets');
 const { validateAmount } = require('./ledger');
 
 function normalizeRequestIds(rawIds) {
@@ -21,7 +22,7 @@ async function startRound({ gameId, requestIds, createdBy }) {
   try {
     await client.query('BEGIN');
     const gameResult = await client.query(
-      `SELECT id, max_players, active FROM games WHERE id = $1 FOR UPDATE`,
+      `SELECT * FROM games WHERE id = $1 FOR UPDATE`,
       [gameId]
     );
     const game = gameResult.rows[0];
@@ -37,7 +38,7 @@ async function startRound({ gameId, requestIds, createdBy }) {
     if (existing.rowCount) throw new Error('Ya existe una ronda activa en este juego.');
 
     const participantResult = await client.query(
-      `SELECT id, user_id
+      `SELECT id, user_id, bet_amount, bet_option
        FROM join_requests
        WHERE game_id = $1 AND status = 'pending' AND expires_at > NOW()
          AND id IN (${placeholders(ids, 2)})
@@ -47,6 +48,15 @@ async function startRound({ gameId, requestIds, createdBy }) {
     );
     if (participantResult.rowCount !== ids.length) {
       throw new Error('Uno o más participantes ya no están disponibles en la fila.');
+    }
+
+    if (betOptions(game).length) {
+      for (const participant of participantResult.rows) {
+        if (!participant.bet_amount || !participant.bet_option) throw new Error('Un participante debe cancelar su espera y volver a entrar para confirmar su apuesta.');
+        const user = await client.query('SELECT balance, active FROM users WHERE id = $1 FOR UPDATE', [participant.user_id]);
+        if (!user.rows[0]?.active) throw new Error('Una cuenta participante está desactivada.');
+        validateBet(game, participant.bet_amount, participant.bet_option, user.rows[0].balance);
+      }
     }
 
     const roundResult = await client.query(
@@ -120,7 +130,7 @@ async function completeRound({ gameId, roundId, results, createdBy }) {
     if (!round) throw new Error('La ronda ya fue procesada o no existe.');
 
     const participantResult = await client.query(
-      `SELECT r.id AS request_id, r.user_id, r.status, u.balance, u.active
+      `SELECT r.id AS request_id, r.user_id, r.status, r.bet_amount, r.bet_option, u.balance, u.active
        FROM join_requests r JOIN users u ON u.id = r.user_id
        WHERE r.round_id = $1
        ORDER BY r.created_at ASC
@@ -140,7 +150,11 @@ async function completeRound({ gameId, roundId, results, createdBy }) {
       }
       if (!['win', 'loss'].includes(item.outcome)) throw new Error('Selecciona si cada participante ganó o perdió.');
       const direction = item.outcome === 'loss' ? -1 : 1;
-      const amount = validateAmount(direction * Math.abs(Number(item.amount)), round.min_amount, round.max_amount);
+      const participant = participants.find((p) => Number(p.request_id) === requestId);
+      const rawAmount = item.outcome === 'loss' && participant?.bet_amount ? participant.bet_amount : item.amount;
+      const amount = participant?.bet_amount && item.outcome === 'loss'
+        ? -Number(participant.bet_amount)
+        : validateAmount(direction * Math.abs(Number(rawAmount)), round.min_amount, round.max_amount);
       resultByRequest.set(requestId, { amount, note: String(item.note || '').trim().slice(0, 180) });
     }
     if (resultByRequest.size !== participants.length
@@ -164,7 +178,7 @@ async function completeRound({ gameId, roundId, results, createdBy }) {
          (user_id, game_id, amount, balance_before, balance_after, type, note, created_by)
          VALUES ($1, $2, $3, $4, $5, 'game_result', $6, $7)
          RETURNING *`,
-        [participant.user_id, gameId, result.amount, balanceBefore, balanceAfter, result.note, createdBy]
+        [participant.user_id, gameId, result.amount, balanceBefore, balanceAfter, participant.bet_amount ? `Apuesta $${participant.bet_amount} · ${participant.bet_option} · ${result.note}`.slice(0, 180) : result.note, createdBy]
       );
       const transaction = transactionResult.rows[0];
       await client.query(

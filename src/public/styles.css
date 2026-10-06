@@ -278,3 +278,19 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:3px solid
 @media(max-width:900px) { .bulk-result { grid-template-columns:1fr; } }
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *, *::before, *::after { animation:none!important; transition:none!important; } }
 @media print { body { background:white; } }
+
+.bet-fieldset { border:0; padding:0; margin:0; text-align:left; min-width:0; }
+.bet-fieldset legend { color:var(--gold); font-weight:800; margin-bottom:14px; }
+.bet-option-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.bet-choice { position:relative; cursor:pointer; }
+.bet-choice input { position:absolute; width:1px; height:1px; opacity:0; }
+.bet-choice span { display:grid; place-items:center; text-align:center; min-height:64px; padding:14px; border:1px solid #6a7951; border-radius:12px; background:#143e2a; transition:background .15s; }
+.bet-choice input:checked + span { background:var(--gold); color:#20180b; border-color:#ffe5a3; box-shadow:0 0 0 3px #e8c77b33; }
+.bet-choice input:focus-visible + span { outline:3px solid #f6dfa1; outline-offset:3px; }
+.bet-amount-buttons { margin-bottom:16px; }
+.chip-button:disabled { opacity:.4; cursor:not-allowed; }
+.bet-summary { margin:0 0 16px; padding:16px; border:1px solid var(--border); border-radius:12px; color:var(--gold); background:#06180e55; }
+.player-bet-badge { display:inline-block; margin-top:8px; color:#f1d393; font-size:.8rem; border:1px solid var(--border); padding:4px 8px; border-radius:8px; }
+.bet-settings { min-width:180px; margin:0; }
+.game-admin-card { flex-wrap:wrap; }
+@media(max-width:640px) { .bet-option-grid { grid-template-columns:1fr; } .bet-settings { width:100%; } }

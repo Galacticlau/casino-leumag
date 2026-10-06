@@ -207,3 +207,14 @@ sql/schema.sql             estructura de la base de datos
 data/                      datos creados al ejecutar, no viene en el ZIP
 test/                      pruebas automáticas
 ```
+
+
+### Apuestas antes de la ronda
+
+En **Administración → Juegos → Opciones para apostar**, escribe una opción por línea para crear la botonera de ese juego. Hay un máximo de 12 opciones. Los juegos comienzan con el botón genérico «Participar»; configura sus opciones reales antes del evento. Bingo y ruleta conservan su flujo independiente, sin esta apuesta previa.
+
+Al entrar desde el QR, cada participante selecciona opción y monto y confirma para entrar a la fila. Se valida el rango de la mesa y el saldo, tanto al confirmar como al iniciar la ronda. La opción y el monto aparecen en la fila y en la ronda activa. Para cambiar una apuesta pendiente, cancela la espera y vuelve a entrar; una ronda iniciada conserva su apuesta.
+
+El saldo no se descuenta al entrar: se liquida al cerrar la ronda. Si perdió, el sistema descuenta exactamente la apuesta confirmada. Si ganó, la encargada registra la **ganancia neta**, sin sumar la devolución de la apuesta. Por ejemplo, con saldo $10.000 y apuesta $500, perder deja $9.500; ganar $500 deja $10.500. Se mantiene el rango de resultados configurado para el juego. La apuesta también queda identificada en el movimiento de la cuenta.
+
+Las opciones se pueden editar cuando no hay participantes pendientes ni una ronda en juego. Las participaciones pendientes anteriores a esta actualización deben cancelarse y confirmarse de nuevo para registrar la apuesta.

@@ -15,6 +15,7 @@ const { requireLogin, requireRole, redirectByRole } = require('./auth');
 const { applyTransaction, reverseTransaction } = require('./services/ledger');
 const { startRound, cancelRound, completeRound } = require('./services/rounds');
 const { parseNames } = require('./public/csv-users');
+const { betOptions, parseOptions, joinGame } = require('./services/bets');
 const EmbeddedSessionStore = require('./session-store');
 
 const app = express();
@@ -269,60 +270,16 @@ app.get('/game/:slug', requireRole('player'), asyncRoute(async (req, res) => {
     pool.query('SELECT balance FROM users WHERE id = $1', [req.session.user.id]),
     getSettings()
   ]);
-  res.render('game', { title: gameResult.rows[0].name, game: gameResult.rows[0], balance: userResult.rows[0].balance, settings });
+  res.render('game', { title: gameResult.rows[0].name, game: gameResult.rows[0], balance: userResult.rows[0].balance, settings, betOptions: betOptions(gameResult.rows[0]) });
 }));
 
 app.post('/game/:slug/join', requireRole('player'), asyncRoute(async (req, res) => {
-  const gameResult = await pool.query('SELECT id FROM games WHERE slug = $1 AND active = TRUE', [req.params.slug]);
-  if (!gameResult.rowCount) throw new Error('El juego no está disponible.');
-  const gameId = gameResult.rows[0].id;
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    await client.query(
-      `UPDATE join_requests SET status = 'expired'
-       WHERE user_id = $1 AND status = 'pending' AND expires_at <= NOW()`,
-      [req.session.user.id]
-    );
-    const existing = await client.query(
-      `SELECT r.id, r.game_id, r.status, g.name AS game_name
-       FROM join_requests r JOIN games g ON g.id = r.game_id
-       WHERE r.user_id = $1 AND r.status IN ('pending', 'playing')
-       FOR UPDATE OF r`,
-      [req.session.user.id]
-    );
-    if (existing.rowCount) {
-      const request = existing.rows[0];
-      if (Number(request.game_id) === Number(gameId) && request.status === 'pending') {
-        await client.query(
-          `UPDATE join_requests SET expires_at = NOW() + INTERVAL '15 minutes' WHERE id = $1`,
-          [request.id]
-        );
-      } else if (Number(request.game_id) !== Number(gameId)) {
-        setFlash(req, 'error', `Ya estás participando en ${request.game_name}. Finaliza esa participación antes de entrar a otro juego.`);
-      }
-      await client.query('COMMIT');
-      return res.redirect(`/player/wait/${request.id}`);
-    }
-    const requestResult = await client.query(
-      'INSERT INTO join_requests (user_id, game_id) VALUES ($1, $2) RETURNING id',
-      [req.session.user.id, gameId]
-    );
-    await client.query('COMMIT');
-    return res.redirect(`/player/wait/${requestResult.rows[0].id}`);
+    const id = await joinGame({ slug: req.params.slug, userId: req.session.user.id, amount: req.body.betAmount, option: req.body.betOption });
+    return res.redirect(`/player/wait/${id}`);
   } catch (error) {
-    await client.query('ROLLBACK');
-    if (error.code === '23505') {
-      const existing = await pool.query(
-        `SELECT id FROM join_requests
-         WHERE user_id = $1 AND status IN ('pending', 'playing') LIMIT 1`,
-        [req.session.user.id]
-      );
-      if (existing.rowCount) return res.redirect(`/player/wait/${existing.rows[0].id}`);
-    }
-    throw error;
-  } finally {
-    client.release();
+    setFlash(req, 'error', error.message);
+    return res.redirect(`/game/${encodeURIComponent(req.params.slug)}`);
   }
 }));
 
@@ -387,14 +344,14 @@ app.get('/api/admin/game/:id/queue', requireRole('game_admin', 'superadmin'), as
   await pool.query(`UPDATE join_requests SET status = 'expired' WHERE game_id = $1 AND status = 'pending' AND expires_at <= NOW()`, [req.params.id]);
   const [queueResult, roundResult] = await Promise.all([
     pool.query(
-      `SELECT r.id, r.created_at, r.expires_at, u.id AS user_id, u.display_name, u.username, u.balance
+      `SELECT r.id, r.created_at, r.expires_at, r.bet_amount, r.bet_option, u.id AS user_id, u.display_name, u.username, u.balance
        FROM join_requests r JOIN users u ON u.id = r.user_id
        WHERE r.game_id = $1 AND r.status = 'pending' AND r.expires_at > NOW()
        ORDER BY r.created_at ASC`,
       [req.params.id]
     ),
     pool.query(
-      `SELECT gr.id, gr.created_at, r.id AS request_id, u.id AS user_id,
+      `SELECT gr.id, gr.created_at, r.id AS request_id, r.bet_amount, r.bet_option, u.id AS user_id,
         u.display_name, u.username, u.balance
        FROM game_rounds gr
        LEFT JOIN join_requests r ON r.round_id = gr.id AND r.status = 'playing'
@@ -414,7 +371,7 @@ app.get('/api/admin/game/:id/queue', requireRole('game_admin', 'superadmin'), as
         user_id: row.user_id,
         display_name: row.display_name,
         username: row.username,
-        balance: row.balance
+        balance: row.balance, bet_amount: row.bet_amount, bet_option: row.bet_option
       }))
     };
   }
@@ -481,7 +438,7 @@ app.get('/super', requireRole('superadmin'), asyncRoute(async (req, res) => {
        (SELECT COUNT(*)::int FROM transactions) AS transaction_count FROM users`)
   ]);
   res.render('super', {
-    title: 'Administración general', users: users.rows, games: games.rows,
+    title: 'Administración general', users: users.rows, games: games.rows.map(game => ({ ...game, availableBetOptions: betOptions(game) })),
     assignments: assignments.rows, transactions: transactions.rows,
     settings, totals: totals.rows[0]
   });
@@ -720,6 +677,25 @@ app.post('/super/games', requireRole('superadmin'), asyncRoute(async (req, res) 
     if (error.code === '23505') setFlash(req, 'error', 'Ya existe un juego con ese enlace.');
     else throw error;
   }
+  res.redirect('/super#juegos');
+}));
+
+app.post('/super/games/:id/bet-options', requireRole('superadmin'), asyncRoute(async (req, res) => {
+  try {
+    const options = parseOptions(req.body.options);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const gameResult = await client.query('SELECT * FROM games WHERE id = $1 FOR UPDATE', [req.params.id]);
+      if (!gameResult.rowCount || !betOptions(gameResult.rows[0]).length) throw new Error('Bingo y ruleta se configuran por separado.');
+      const active = await client.query("SELECT id FROM join_requests WHERE game_id = $1 AND (status = 'playing' OR (status = 'pending' AND expires_at > NOW())) LIMIT 1", [req.params.id]);
+      if (active.rowCount) throw new Error('Espera a que terminen las participaciones activas antes de cambiar las opciones.');
+      await client.query('UPDATE games SET bet_options = $1::jsonb WHERE id = $2', [JSON.stringify(options), req.params.id]);
+      await client.query('COMMIT');
+    } catch (error) { await client.query('ROLLBACK'); throw error; }
+    finally { client.release(); }
+    setFlash(req, 'success', 'Botonera de apuestas actualizada.');
+  } catch (error) { setFlash(req, 'error', error.message); }
   res.redirect('/super#juegos');
 }));
 
