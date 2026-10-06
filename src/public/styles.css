@@ -232,3 +232,49 @@ code { color: #d5e4e1; background: rgba(0,0,0,.22); border-radius: 5px; padding:
   .qr-card { border: 2px solid #1c3435; padding: .5cm; box-shadow: none; }
   .qr-card img { width: 5.1cm; }
 }
+
+/* Salón clásico: paño verde, latón y naipes. */
+:root { --bg:#071810; --surface:#102c20; --surface-2:#193b2a; --border:rgba(222,187,109,.23); --gold:#e8c77b; --gold-dark:#ac803b; --muted:#b9c6b8; --radius:16px; }
+body { background: radial-gradient(ellipse at 50% 0%, #245139 0, #0c2519 42%, #06130d 100%); background-attachment:fixed; }
+.site-header { background:rgba(6,19,13,.94); border-bottom:1px solid #826636; box-shadow:0 6px 32px #0005; }
+.brand { color:var(--gold); font-family:Georgia,serif; letter-spacing:.05em; }
+h1, .hero-card h1, .auth-card h2 { font-family:Georgia,'Times New Roman',serif; font-weight:500; }
+.panel, .game-card, .queue-card { background:linear-gradient(135deg,#173c2b,#0c251b); border-color:var(--border); box-shadow:0 18px 40px #0004,inset 0 1px 0 #e8c77b12; }
+.auth-card { border:1px solid #b18b48; position:relative; background:linear-gradient(145deg,#153426,#081c13); }
+.auth-card::before { content:'MEMBERS CLUB'; color:var(--gold); letter-spacing:.26em; font-size:.65rem; border-bottom:1px solid var(--border); padding-bottom:16px; }
+.hero-card { position:relative; padding:38px 0; }
+.hero-card .eyebrow { letter-spacing:.3em; }
+.hero-card h1 { line-height:1.02; text-shadow:0 3px 20px #0006; }
+.suit-row { gap:0; margin-top:38px; opacity:1; }
+.suit-row span { display:grid; place-items:center; width:64px; height:85px; background:#f6edda; color:#172b22; border:1px solid #dfc997; border-radius:8px; font-size:2.6rem; box-shadow:0 8px 20px #0005; transform:rotate(-12deg); margin-right:-8px; }
+.suit-row span:nth-child(2) { transform:rotate(-4deg); color:#8e2638; }
+.suit-row span:nth-child(3) { transform:rotate(5deg); }
+.suit-row span:nth-child(4) { transform:rotate(14deg); color:#8e2638; }
+input, select, textarea { background:#091f15; border-color:#3f5a40; }
+.button-primary { background:linear-gradient(135deg,#f6dfa1,#d4ac5b); color:#211a0c; box-shadow:0 3px 0 #987439; }
+.button-secondary { background:#214330; }
+.button-danger { background:#732537; }
+.balance-card { background:linear-gradient(120deg,#fae8b6,#cfa451); border:1px solid #fae3aa; }
+.game-card { overflow:hidden; min-height:180px; padding-top:48px; }
+.game-card::before { content:'♠  ♦  ♣  ♥'; position:absolute; top:14px; left:24px; color:var(--gold); letter-spacing:.35em; font-size:.85rem; }
+.active-round-panel { border-color:#b59653; }
+.round-fields { grid-template-columns:1fr; gap:16px; }
+.round-fields > div, .bulk-result > div { display:grid; gap:8px; font-size:.85rem; font-weight:700; }
+.outcome-buttons { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.outcome-button { min-height:48px; border-radius:10px; border:1px solid #52705a; background:#102c20; color:#e8eee7; font-weight:800; cursor:pointer; }
+.outcome-win[aria-pressed=true] { background:#24704d; border-color:#79d9a6; box-shadow:0 0 0 2px #79d9a633; }
+.outcome-loss[aria-pressed=true] { background:#842d40; border-color:#ee8b9c; box-shadow:0 0 0 2px #ee8b9c33; }
+.chip-buttons { display:flex; flex-wrap:wrap; gap:8px; }
+.chip-button { min-width:64px; min-height:46px; padding:7px 12px; border-radius:24px; border:2px dashed #a5b89b; background:#173e2c; color:#f4efdf; box-shadow:inset 0 0 0 3px #173e2c,0 3px 6px #0004; font-weight:800; cursor:pointer; }
+.chip-button[aria-pressed=true] { color:#20180b; background:var(--gold); border-color:#72552b; box-shadow:0 0 0 3px #e8c77b33; }
+.amount-controls { display:grid; gap:10px; }
+.round-amount { font-size:1.15rem; }
+.bulk-result { grid-template-columns:1fr 2fr auto; background:#071c1455; border:1px solid var(--border); }
+.round-main-actions { position:sticky; bottom:12px; z-index:5; }
+.round-main-actions .button { box-shadow:0 8px 24px #0009; }
+.csv-preview { max-height:300px; overflow:auto; }
+.csv-preview-row { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid var(--border); }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline:3px solid #f6dfa1; outline-offset:4px; }
+@media(max-width:900px) { .bulk-result { grid-template-columns:1fr; } }
+@media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } *, *::before, *::after { animation:none!important; transition:none!important; } }
+@media print { body { background:white; } }

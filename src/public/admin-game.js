@@ -41,14 +41,41 @@
   }
 
   function outcomeSelect() {
-    const select = document.createElement('select');
-    select.className = 'round-outcome';
-    const win = document.createElement('option');
-    win.value = 'win'; win.textContent = 'Ganó';
-    const loss = document.createElement('option');
-    loss.value = 'loss'; loss.textContent = 'Perdió';
-    select.append(win, loss);
-    return select;
+    const group = element('div', 'outcome-buttons');
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', 'Resultado del participante');
+    const input = hidden('', '');
+    input.className = 'round-outcome';
+    const buttons = ['win', 'loss'].map((value) => {
+      const button = element('button', `outcome-button outcome-${value}`, value === 'win' ? '↑ Ganó' : '↓ Perdió');
+      button.type = 'button';
+      button.setAttribute('aria-pressed', 'false');
+      button.addEventListener('click', () => { input.value = value; input.dispatchEvent(new Event('change')); });
+      group.append(button);
+      return button;
+    });
+    input.addEventListener('change', () => buttons.forEach((button, index) => {
+      button.setAttribute('aria-pressed', String(input.value === ['win', 'loss'][index]));
+    }));
+    group.append(input);
+    return group;
+  }
+
+  function amountControls(input) {
+    const box = element('div', 'amount-controls');
+    const row = element('div', 'chip-buttons');
+    const values = [...new Set([minimum, 50, 100, 500, 1000, 2000, 5000, maximum])]
+      .filter((value) => value >= minimum && value <= maximum).sort((a, b) => a - b);
+    values.forEach((value) => {
+      const chip = element('button', 'chip-button', `$${format(value)}`);
+      chip.type = 'button';
+      chip.setAttribute('aria-pressed', String(Number(input.value) === value));
+      chip.addEventListener('click', () => { input.value = value; input.dispatchEvent(new Event('input')); });
+      input.addEventListener('input', () => chip.setAttribute('aria-pressed', String(Number(input.value) === value)));
+      row.append(chip);
+    });
+    box.append(row, input);
+    return box;
   }
 
   function amountInput() {
@@ -80,12 +107,12 @@
     section.append(heading);
 
     const bulk = element('div', 'bulk-result');
-    const bulkOutcomeLabel = element('label', '', 'Resultado para todos');
+    const bulkOutcomeLabel = element('div', '', 'Resultado para todos');
     const bulkOutcome = outcomeSelect();
     bulkOutcomeLabel.append(bulkOutcome);
-    const bulkAmountLabel = element('label', '', `Cantidad de ${currency}`);
+    const bulkAmountLabel = element('div', '', `Cantidad de ${currency}`);
     const bulkAmount = amountInput();
-    bulkAmountLabel.append(bulkAmount);
+    bulkAmountLabel.append(amountControls(bulkAmount));
     const apply = element('button', 'button button-secondary', 'Aplicar a todos');
     apply.type = 'button';
     bulk.append(bulkOutcomeLabel, bulkAmountLabel, apply);
@@ -103,12 +130,12 @@
       card.dataset.requestId = item.request_id;
       card.append(playerIdentity(item, index + 1));
       const fields = element('div', 'round-fields');
-      const outcomeLabel = element('label', '', 'Resultado');
+      const outcomeLabel = element('div', '', 'Resultado');
       const outcome = outcomeSelect();
       outcomeLabel.append(outcome);
-      const amountLabel = element('label', '', `Cantidad de ${currency}`);
+      const amountLabel = element('div', '', `Cantidad de ${currency}`);
       const amount = amountInput();
-      amountLabel.append(amount);
+      amountLabel.append(amountControls(amount));
       fields.append(outcomeLabel, amountLabel);
       card.append(fields);
       grid.append(card);
@@ -119,7 +146,12 @@
     finish.type = 'submit';
     actions.append(finish);
     form.append(actions);
-    form.addEventListener('submit', () => {
+    form.addEventListener('submit', (event) => {
+      if ([...form.querySelectorAll('.round-outcome')].some((field) => !field.value)) {
+        event.preventDefault();
+        window.alert('Marca Ganó o Perdió para cada participante antes de cerrar la ronda.');
+        return;
+      }
       const results = [...form.querySelectorAll('.round-participant')].map((card) => ({
         requestId: Number(card.dataset.requestId),
         outcome: card.querySelector('.round-outcome').value,
@@ -130,8 +162,9 @@
       finish.textContent = 'Registrando…';
     });
     apply.addEventListener('click', () => {
-      form.querySelectorAll('.round-outcome').forEach((field) => { field.value = bulkOutcome.value; });
-      form.querySelectorAll('.round-amount').forEach((field) => { field.value = bulkAmount.value; });
+      if (!bulkOutcome.querySelector('input').value || !bulkAmount.checkValidity()) { window.alert('Selecciona un resultado y un monto válido para todos.'); return; }
+      form.querySelectorAll('.round-outcome').forEach((field) => { field.value = bulkOutcome.querySelector('input').value; field.dispatchEvent(new Event('change')); });
+      form.querySelectorAll('.round-amount').forEach((field) => { field.value = bulkAmount.value; field.dispatchEvent(new Event('input')); });
     });
     section.append(form);
 

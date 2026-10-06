@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
   id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
   event_name TEXT NOT NULL DEFAULT 'Casino Escolar',
   currency_name TEXT NOT NULL DEFAULT 'fichas',
-  initial_balance INTEGER NOT NULL DEFAULT 1000 CHECK (initial_balance >= 0),
+  initial_balance INTEGER NOT NULL DEFAULT 10000 CHECK (initial_balance >= 0),
   allow_negative BOOLEAN NOT NULL DEFAULT FALSE,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -154,5 +154,14 @@ BEGIN
     ALTER TABLE join_requests
       ADD CONSTRAINT join_requests_transaction_id_fkey
       FOREIGN KEY (transaction_id) REFERENCES transactions(id);
+  END IF;
+END $$;
+
+-- Aplicar una sola vez el nuevo saldo de bienvenida; no modifica cuentas existentes.
+CREATE TABLE IF NOT EXISTS app_migrations (name TEXT PRIMARY KEY);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM app_migrations WHERE name = 'welcome-10000') THEN
+    UPDATE app_settings SET initial_balance = 10000 WHERE id = 1;
+    INSERT INTO app_migrations (name) VALUES ('welcome-10000');
   END IF;
 END $$;

@@ -14,6 +14,7 @@ const { pool, initializeDatabase, getSettings } = require('./db');
 const { requireLogin, requireRole, redirectByRole } = require('./auth');
 const { applyTransaction, reverseTransaction } = require('./services/ledger');
 const { startRound, cancelRound, completeRound } = require('./services/rounds');
+const { parseNames } = require('./public/csv-users');
 const EmbeddedSessionStore = require('./session-store');
 
 const app = express();
@@ -77,8 +78,8 @@ app.use(helmet({
     }
   }
 }));
-app.use(express.urlencoded({ extended: false, limit: '20kb' }));
-app.use(express.json({ limit: '20kb' }));
+app.use(express.urlencoded({ extended: false, limit: '150kb' }));
+app.use(express.json({ limit: '150kb' }));
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: isProduction ? '1h' : 0 }));
 app.use(session({
   store: new EmbeddedSessionStore(pool),
@@ -576,6 +577,50 @@ app.post('/super/users/generate', requireRole('superadmin'), asyncRoute(async (r
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="cuentas-participantes.csv"');
   res.send(`\uFEFF${csv}`);
+}));
+
+app.post('/super/users/import', requireRole('superadmin'), asyncRoute(async (req, res) => {
+  let names;
+  try {
+    const mode = String(req.body.givenNames || 'auto');
+    if (!['auto', '1', '2'].includes(mode)) throw new Error('Selecciona cómo están escritos los nombres.');
+    names = parseNames(req.body.csv || '', mode);
+  } catch (error) {
+    setFlash(req, 'error', error.message);
+    return res.redirect('/super#usuarios');
+  }
+  const client = await pool.connect();
+  const created = [];
+  try {
+    await client.query('BEGIN');
+    // Serializa importaciones concurrentes para asignar sufijos únicos.
+    await client.query('LOCK TABLE users IN SHARE ROW EXCLUSIVE MODE');
+    const existing = await client.query('SELECT username FROM users');
+    const used = new Set(existing.rows.map((row) => row.username));
+    for (const item of names) {
+      let username = item.base, suffix = 2;
+      while (used.has(username)) username = `${item.base}${suffix++}`;
+      used.add(username);
+      const password = crypto.randomBytes(9).toString('base64url');
+      const hash = await bcrypt.hash(password, 10);
+      const result = await client.query(
+        `INSERT INTO users (username, display_name, password_hash, role, balance, must_change_password)
+         VALUES ($1, $2, $3, 'player', 10000, TRUE) RETURNING id`, [username, item.displayName, hash]);
+      await client.query(
+        `INSERT INTO transactions (user_id, amount, balance_before, balance_after, type, note, created_by)
+         VALUES ($1, 10000, 0, 10000, 'adjustment', 'Saldo inicial', $2)`, [result.rows[0].id, req.session.user.id]);
+      created.push([item.displayName, username, password]);
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally { client.release(); }
+  const escapeCsv = (value) => `"${String(value).replace(/"/g, '""')}"`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Content-Disposition', 'attachment; filename="accesos-participantes.csv"');
+  res.send('\uFEFF' + ['Nombre,Usuario,Clave', ...created.map((row) => row.map(escapeCsv).join(','))].join('\r\n'));
 }));
 
 app.post('/super/users/:id/role', requireRole('superadmin'), asyncRoute(async (req, res) => {

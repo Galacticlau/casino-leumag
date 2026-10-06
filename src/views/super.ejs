@@ -43,6 +43,24 @@
     </form>
   </details>
 
+  <details class="create-box">
+    <summary>Importar participantes desde CSV</summary>
+    <p class="help">Sube un CSV con la columna <code>Nombre completo</code> o columnas <code>Nombres</code> y <code>Apellidos</code>. También acepta una lista sin encabezado, un nombre completo por fila. Cada participante comienza con $10.000.</p>
+    <form method="post" action="/super/users/import" id="csv-import" class="form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="csv">
+      <label>Archivo CSV<input type="file" accept=".csv,text/csv" required></label>
+      <label>En una sola columna, ¿cuántos nombres van antes del primer apellido?
+        <select name="givenNames"><option value="auto">Automático: dos si hay cuatro palabras; uno si hay dos o tres</option><option value="1">Un nombre: Ana Pérez González</option><option value="2">Dos nombres: Ana María Pérez González</option></select>
+      </label>
+      <p class="help">Para nombres compuestos o apellidos como «De la Cruz», usa columnas «Nombres» y «Primer apellido». Revisa los usuarios antes de crear. Si ya existe un usuario, se agregará un número. Las claves temporales se descargan en un CSV y deben cambiarse al ingresar.</p>
+      <div id="csv-preview" class="csv-preview" aria-live="polite"></div>
+      <button type="submit" class="button button-primary" disabled>Crear cuentas y descargar claves</button>
+    </form>
+  </details>
+  <script src="/csv-users.js" defer></script>
+  <script src="/import-users.js" defer></script>
+
   <div class="table-wrap">
     <table>
       <thead><tr><th>Nombre</th><th>Usuario / rol</th><th>Saldo</th><th>Estado</th><th>Acciones</th></tr></thead>
