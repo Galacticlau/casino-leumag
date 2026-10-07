@@ -20,6 +20,15 @@ test('opciones editables y excepción para bingo y ruleta', () => {
   assert.throws(()=>parseOptions(''));
   for(const name of ['Bingo musical','Ruleta matemática']) assert.deepEqual(betOptions({...game,name}),[]);
 });
+test('Mano Dorada siempre exige apuesta aunque falten opciones o lleguen como JSON de texto', () => {
+  for (const options of [undefined, null, [], '', '[]', 'incorrecto', {}, [null, '']]) {
+    const mano = {...game, name:'Mano Dorada', slug:'mano-dorada', bet_options: options};
+    assert.deepEqual(betOptions(mano), ['Participar']);
+    assert.throws(() => validateBet(mano, undefined, '', 12000), /monto/);
+  }
+  assert.deepEqual(betOptions({...game, bet_options:'["Banca","Jugador"]'}), ['Banca','Jugador']);
+  assert.deepEqual(betOptions({...game, name:'Bingo', bet_options:null}), []);
+});
 test('rechaza montos y opciones inválidos o apuestas que exceden el saldo', () => {
   for (const amount of [0,99,1001,1.5,NaN]) assert.throws(()=>validateBet(game,amount,'Jugador',10000));
   assert.throws(()=>validateBet(game,500,'Jugador',200),/saldo/);

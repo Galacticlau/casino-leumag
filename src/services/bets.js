@@ -2,7 +2,13 @@ const { pool } = require('../db');
 function betOptions(game) {
   const name = `${game.name || ''} ${game.slug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   if (/bingo|ruleta/.test(name)) return [];
-  return Array.isArray(game.bet_options) ? game.bet_options : [];
+  let options = game.bet_options;
+  if (typeof options === 'string') {
+    try { options = JSON.parse(options); } catch { options = null; }
+  }
+  if (!Array.isArray(options)) return ['Participar'];
+  const normalized = [...new Set(options.filter(option => typeof option === 'string').map(option => option.trim()).filter(option => option && option.length <= 60))].slice(0, 12);
+  return normalized.length ? normalized : ['Participar'];
 }
 function parseOptions(text) {
   const options = String(text || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
