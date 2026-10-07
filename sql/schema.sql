@@ -169,3 +169,14 @@ END $$;
 ALTER TABLE games ADD COLUMN IF NOT EXISTS bet_options JSONB NOT NULL DEFAULT '["Participar"]'::jsonb;
 ALTER TABLE join_requests ADD COLUMN IF NOT EXISTS bet_amount INTEGER CHECK (bet_amount > 0);
 ALTER TABLE join_requests ADD COLUMN IF NOT EXISTS bet_option VARCHAR(60);
+
+
+-- Permitir la ficha de $500 en Mano Dorada, sin cambiar otras mesas.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM app_migrations WHERE name = 'mano-dorada-500') THEN
+    UPDATE games SET min_amount = 500
+    WHERE LOWER(TRIM(name)) = 'mano dorada'
+      AND min_amount > 500 AND max_amount >= 500;
+    INSERT INTO app_migrations (name) VALUES ('mano-dorada-500');
+  END IF;
+END $$;
