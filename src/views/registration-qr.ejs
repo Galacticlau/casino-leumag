@@ -1,0 +1,27 @@
+<%- include('partials/header') %>
+<section class="print-toolbar">
+  <div><a class="back-link" href="/super">← Administración</a><span class="eyebrow">Acceso exclusivo de administración</span><h1>QR de inscripción</h1><p>Un QR para que cada participante cree su propia cuenta.</p></div>
+  <% if (settings.registration_open) { %><button class="button button-primary" id="print-button" type="button">Imprimir QR</button><% } %>
+</section>
+<section class="panel registration-controls">
+  <p>Estado: <strong><%= settings.registration_open ? 'Inscripción abierta' : 'Inscripción cerrada' %></strong></p>
+  <form method="post" action="/super/registration" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="open" value="<%= settings.registration_open ? 'false' : 'true' %>">
+    <button type="submit" class="button <%= settings.registration_open ? 'button-secondary' : 'button-primary' %>"><%= settings.registration_open ? 'Cerrar inscripción' : 'Generar QR y abrir inscripción' %></button>
+  </form>
+  <p class="help">Cerrar la inscripción impide crear cuentas nuevas; las cuentas existentes siguen funcionando. El mismo QR sirve al reabrirla.</p>
+</section>
+<% if (settings.registration_open) { %>
+  <section class="qr-grid">
+    <article class="qr-card">
+      <span class="eyebrow"><%= settings.event_name %></span><h2>Crea tu cuenta</h2>
+      <img src="/super/registration/qr.png" alt="QR para crear una cuenta de participante">
+      <p>Escanea y elige tu usuario <strong>nombre.apellido</strong> y tu clave.<br>Comienza con <strong>$10.000</strong>.</p>
+      <small><%= registrationUrl %></small>
+    </article>
+  </section>
+  <p class="help registration-controls">Enlace de inscripción: <a href="<%= registrationUrl %>" target="_blank" rel="noopener"><%= registrationUrl %></a></p>
+<% } %>
+<script src="/print.js" defer></script>
+<%- include('partials/footer') %>

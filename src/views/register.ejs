@@ -1,0 +1,23 @@
+<%- include('partials/header') %>
+<section class="narrow-panel panel">
+  <span class="eyebrow">Inscripción de participantes</span>
+  <h1>Crea tu cuenta</h1>
+  <p>Inscríbete en <%= settings.event_name %> y comienza con <strong>$10.000</strong>.</p>
+  <% if (!settings.registration_open) { %>
+    <div class="notice">La inscripción está cerrada. Consulta a la administración del evento.</div>
+    <a class="button button-primary" href="/login">Ingresar con mi cuenta</a>
+  <% } else if (currentUser) { %>
+    <div class="notice">Ya ingresaste con una cuenta. Cierra sesión para crear una cuenta distinta.</div>
+    <a class="button button-primary" href="/">Volver a mi cuenta</a>
+  <% } else { %>
+    <form method="post" action="/register" class="form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Nombre completo<input name="displayName" required maxlength="80" autocomplete="name" value="<%= fields.displayName || '' %>" placeholder="Ej.: Ana Pérez González"></label>
+      <label>Usuario<input name="username" required maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" value="<%= fields.username || '' %>" placeholder="ana.perez"><small>Usa nombre.apellido. Si ya existe, agrega un número: ana.perez2.</small></label>
+      <label>Clave<input name="password" type="password" required autocomplete="new-password"><small>Puedes usar una clave sencilla, como 123. No se exige largo mínimo ni caracteres especiales.</small></label>
+      <button class="button button-primary button-large" type="submit">Crear cuenta y entrar</button>
+      <p class="help">¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>.</p>
+    </form>
+  <% } %>
+</section>
+<%- include('partials/footer') %>

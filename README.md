@@ -218,3 +218,10 @@ Al entrar desde el QR, cada participante selecciona opción y monto y confirma p
 El saldo no se descuenta al entrar: se liquida al cerrar la ronda. Si perdió, el sistema descuenta exactamente la apuesta confirmada. Si ganó, la encargada registra la **ganancia neta**, sin sumar la devolución de la apuesta. Por ejemplo, con saldo $10.000 y apuesta $500, perder deja $9.500; ganar $500 deja $10.500. Se mantiene el rango de resultados configurado para el juego. La apuesta también queda identificada en el movimiento de la cuenta.
 
 Las opciones se pueden editar cuando no hay participantes pendientes ni una ronda en juego. Las participaciones pendientes anteriores a esta actualización deben cancelarse y confirmarse de nuevo para registrar la apuesta.
+
+
+### Inscripción con QR
+
+En **Administración → Inscripción por QR**, abre «Generar y administrar QR de inscripción» y pulsa **Generar QR y abrir inscripción**. Puedes imprimir el QR o compartir el enlace. El QR lleva a `/register`, donde cada participante escribe su nombre completo, elige un usuario `nombre.apellido` y una clave. Se aceptan claves sencillas como `123` o `1`, sin largo mínimo ni requisitos de composición. La clave se almacena cifrada mediante hash, y no se exige cambiarla al entrar.
+
+Cada cuenta creada aquí es participante, comienza con $10.000 y registra su saldo inicial en los movimientos. Si el usuario ya existe, el formulario pide agregar un número o iniciar sesión. La inscripción comienza cerrada y solo la administración general puede abrirla o cerrarla. Al cerrarla, las cuentas existentes conservan su acceso; al reabrirla sirve el mismo QR.

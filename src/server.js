@@ -16,6 +16,7 @@ const { applyTransaction, reverseTransaction } = require('./services/ledger');
 const { startRound, cancelRound, completeRound } = require('./services/rounds');
 const { parseNames } = require('./public/csv-users');
 const { betOptions, parseOptions, joinGame } = require('./services/bets');
+const { registerPlayer } = require('./services/registration');
 const EmbeddedSessionStore = require('./session-store');
 
 const app = express();
@@ -152,6 +153,49 @@ app.get('/login', asyncRoute(async (req, res) => {
   if (req.session.user) return res.redirect(redirectByRole(req.session.user));
   const settings = await getSettings();
   return res.render('login', { title: 'Ingresar', settings });
+}));
+
+app.get('/register', asyncRoute(async (req, res) => {
+  const settings = await getSettings();
+  res.setHeader('Cache-Control', 'no-store');
+  res.render('register', { title: 'Crear cuenta', settings, fields: {} });
+}));
+
+const registrationLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 200, standardHeaders: true, legacyHeaders: false });
+app.post('/register', registrationLimiter, asyncRoute(async (req, res) => {
+  if (req.session.user) return res.redirect('/');
+  let user;
+  try { user = await registerPlayer(req.body); }
+  catch (error) {
+    const settings = await getSettings();
+    res.locals.flash = { type: 'error', message: error.message };
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(400).render('register', { title: 'Crear cuenta', settings, fields: {
+      displayName: String(req.body.displayName || '').slice(0, 80), username: String(req.body.username || '').slice(0, 40)
+    } });
+  }
+  await new Promise((resolve, reject) => req.session.regenerate(error => error ? reject(error) : resolve()));
+  req.session.user = { id: Number(user.id), username: user.username, displayName: user.display_name, role: 'player', mustChangePassword: false };
+  return req.session.save(() => res.redirect('/player'));
+}));
+
+app.get('/super/registration', requireRole('superadmin'), asyncRoute(async (req, res) => {
+  const settings = await getSettings();
+  res.setHeader('Cache-Control', 'no-store');
+  res.render('registration-qr', { title: 'QR de inscripción', settings, registrationUrl: `${publicBaseUrl(req)}/register` });
+}));
+
+app.post('/super/registration', requireRole('superadmin'), asyncRoute(async (req, res) => {
+  await pool.query('UPDATE app_settings SET registration_open = $1, updated_at = NOW() WHERE id = 1', [req.body.open === 'true']);
+  res.redirect('/super/registration');
+}));
+
+app.get('/super/registration/qr.png', requireRole('superadmin'), asyncRoute(async (req, res) => {
+  const settings = await getSettings();
+  if (!settings.registration_open) return res.sendStatus(404);
+  const png = await QRCode.toBuffer(`${publicBaseUrl(req)}/register`, { width: 600, margin: 2, errorCorrectionLevel: 'H' });
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('png').send(png);
 }));
 
 const loginLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });

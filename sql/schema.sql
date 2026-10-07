@@ -180,3 +180,5 @@ DO $$ BEGIN
     INSERT INTO app_migrations (name) VALUES ('mano-dorada-500');
   END IF;
 END $$;
+
+ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS registration_open BOOLEAN NOT NULL DEFAULT FALSE;

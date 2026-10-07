@@ -294,3 +294,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:3px solid
 .bet-settings { min-width:180px; margin:0; }
 .game-admin-card { flex-wrap:wrap; }
 @media(max-width:640px) { .bet-option-grid { grid-template-columns:1fr; } .bet-settings { width:100%; } }
+
+.registration-controls { margin-bottom:24px; }
+@media print { .registration-controls { display:none!important; } }
+
+.qr-card small { overflow-wrap:anywhere; }
