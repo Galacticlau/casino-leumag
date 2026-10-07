@@ -1,198 +1,58 @@
 <%- include('partials/header') %>
+<%- include('partials/admin-nav',{adminSection:'juegos'}) %>
 <section class="dashboard-head">
-  <div><span class="eyebrow">Control general</span><h1><%= settings.event_name %></h1><p class="muted">Configura cuentas, puestos y movimientos desde un único lugar.</p></div>
-  <a class="button button-primary" href="/super/qrs">Ver e imprimir QR</a>
+  <div><span class="eyebrow"><%= settings.event_name %> · Administración</span><h1>Juegos</h1><p class="muted">La caja, los resultados y el equipo de cada mesa, en un solo vistazo.</p></div>
+  <div class="dashboard-actions"><a class="button button-secondary" href="/super">Actualizar cajas</a><a class="button button-primary" href="#nuevo-juego">＋ Crear juego</a></div>
 </section>
-
 <section class="stats-grid">
-  <article><span>Participantes</span><strong><%= totals.players %></strong></article>
-  <article><span><%= settings.currency_name %> en circulación</span><strong><%= formatNumber(totals.circulating) %></strong></article>
-  <article><span>Movimientos registrados</span><strong><%= formatNumber(totals.transaction_count) %></strong></article>
+  <article><span>Mesas activas</span><strong><%= games.filter(g=>g.active).length %></strong></article>
+  <article><span>Caja total de mesas</span><strong>$<%= formatNumber(games.reduce((sum,g)=>sum+Number(g.table_balance||0),0)) %></strong></article>
+  <article><span>Encargados disponibles</span><strong><%= users.filter(u=>u.role==='game_admin'&&u.active).length %></strong></article>
 </section>
-
-<nav class="anchor-nav" aria-label="Secciones de administración">
-  <a href="#inscripcion">Inscripción por QR</a><a href="#usuarios">Cuentas</a><a href="#juegos">Juegos</a><a href="#movimientos">Movimientos</a><a href="#configuracion">Configuración</a>
-</nav>
-
-<section class="panel admin-section" id="inscripcion">
-  <div class="section-title"><div><span class="eyebrow">Registro de participantes</span><h2>Inscripción por QR</h2></div><span class="badge <%= settings.registration_open ? 'badge-success' : 'badge-muted' %>"><%= settings.registration_open ? 'Abierta' : 'Cerrada' %></span></div>
-  <p>Permite que cada participante cree su cuenta con usuario nombre.apellido y una clave sencilla, incluso 123. Cada cuenta comienza con $10.000.</p>
-  <a class="button button-primary" href="/super/registration">Generar y administrar QR de inscripción</a>
-</section>
-
-<section class="panel admin-section" id="usuarios">
-  <div class="section-title"><div><span class="eyebrow">Accesos</span><h2>Cuentas</h2></div></div>
-  <details class="create-box" open>
-    <summary>Crear una cuenta</summary>
-    <form method="post" action="/super/users" class="form-grid">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <label>Nombre visible<input name="displayName" required maxlength="80" placeholder="Ej.: Mesa Ruleta"></label>
-      <label>Usuario<input name="username" required pattern="[a-zA-Z0-9._-]{3,40}" placeholder="Ej.: mesa1"></label>
-      <label>Clave temporal<input type="password" name="password" required minlength="6"></label>
-      <label>Tipo de cuenta
-        <select name="role"><option value="player">Participante</option><option value="game_admin">Encargado de juego</option><option value="superadmin">Administración general</option></select>
-      </label>
-      <button class="button button-primary" type="submit">Crear cuenta</button>
-    </form>
-  </details>
-
-  <details class="create-box">
-    <summary>Generar muchas cuentas y descargar las claves</summary>
-    <p class="help">Crea cuentas anónimas numeradas y descarga un archivo CSV para repartir los accesos.</p>
-    <form method="post" action="/super/users/generate" class="form-grid">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <label>Prefijo de usuario<input name="prefix" value="jugador" required pattern="[a-z][a-z0-9_-]{1,20}"></label>
-      <label>Nombre visible base<input name="namePrefix" value="Participante" required maxlength="50"></label>
-      <label>Número inicial<input type="number" name="start" value="1" min="1" required></label>
-      <label>Cantidad<input type="number" name="count" value="30" min="1" max="200" required></label>
-      <button class="button button-primary" type="submit">Crear y descargar CSV</button>
-    </form>
-  </details>
-
-  <details class="create-box">
-    <summary>Importar participantes desde CSV</summary>
-    <p class="help">Sube un CSV con la columna <code>Nombre completo</code> o columnas <code>Nombres</code> y <code>Apellidos</code>. También acepta una lista sin encabezado, un nombre completo por fila. Cada participante comienza con $10.000.</p>
-    <form method="post" action="/super/users/import" id="csv-import" class="form-stack">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <input type="hidden" name="csv">
-      <label>Archivo CSV<input type="file" accept=".csv,text/csv" required></label>
-      <label>En una sola columna, ¿cuántos nombres van antes del primer apellido?
-        <select name="givenNames"><option value="auto">Automático: dos si hay cuatro palabras; uno si hay dos o tres</option><option value="1">Un nombre: Ana Pérez González</option><option value="2">Dos nombres: Ana María Pérez González</option></select>
-      </label>
-      <p class="help">Para nombres compuestos o apellidos como «De la Cruz», usa columnas «Nombres» y «Primer apellido». Revisa los usuarios antes de crear. Si ya existe un usuario, se agregará un número. Las claves temporales se descargan en un CSV y deben cambiarse al ingresar.</p>
-      <div id="csv-preview" class="csv-preview" aria-live="polite"></div>
-      <button type="submit" class="button button-primary" disabled>Crear cuentas y descargar claves</button>
-    </form>
-  </details>
-  <script src="/csv-users.js" defer></script>
-  <script src="/import-users.js" defer></script>
-
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Nombre</th><th>Usuario / rol</th><th>Saldo</th><th>Estado</th><th>Acciones</th></tr></thead>
-      <tbody>
-        <% users.forEach((user) => { %>
-          <tr>
-            <td><strong><%= user.display_name %></strong></td>
-            <td><code><%= user.username %></code><br><small><%= user.role === 'player' ? 'Participante' : user.role === 'game_admin' ? 'Encargado' : 'Administración' %></small></td>
-            <td><%= user.role === 'player' ? formatNumber(user.balance) : '—' %></td>
-            <td><span class="badge <%= user.active ? 'badge-success' : 'badge-muted' %>"><%= user.active ? 'Activa' : 'Inactiva' %></span></td>
-            <td>
-              <details class="action-menu">
-                <summary>Gestionar</summary>
-                <% if (Number(user.id) !== Number(currentUser.id)) { %>
-                  <form method="post" action="/super/users/<%= user.id %>/role" class="mini-form">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <label>Rol de la cuenta
-                      <select name="role" required>
-                        <option value="player" <%= user.role === 'player' ? 'selected' : '' %>>Participante</option>
-                        <option value="game_admin" <%= user.role === 'game_admin' ? 'selected' : '' %>>Encargado de juego</option>
-                        <option value="superadmin" <%= user.role === 'superadmin' ? 'selected' : '' %>>Administración general</option>
-                      </select>
-                    </label>
-                    <button class="button button-small" type="submit">Cambiar rol</button>
-                  </form>
-                <% } else { %>
-                  <p class="help">Tu propia cuenta de administración no puede cambiar de rol desde aquí.</p>
-                <% } %>
-                <% if (user.role === 'player') { %>
-                  <form method="post" action="/super/users/<%= user.id %>/adjust" class="mini-form">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <label>Ajustar saldo<input type="number" name="amount" required placeholder="Ej.: 100 o -50"></label>
-                    <input name="note" maxlength="180" placeholder="Motivo">
-                    <button class="button button-small" type="submit">Aplicar</button>
-                  </form>
-                <% } %>
-                <form method="post" action="/super/users/<%= user.id %>/reset-password" class="mini-form">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <label>Clave temporal nueva<input type="password" name="password" minlength="6" required></label>
-                  <button class="button button-small" type="submit">Restablecer clave</button>
-                </form>
-                <form method="post" action="/super/users/<%= user.id %>/toggle">
-                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                  <button class="button button-small button-danger" type="submit"><%= user.active ? 'Desactivar cuenta' : 'Reactivar cuenta' %></button>
-                </form>
-              </details>
-            </td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<section class="panel admin-section" id="juegos">
-  <div class="section-title"><div><span class="eyebrow">Puestos y QR</span><h2>Juegos</h2></div><a href="/super/qrs">Imprimir QR</a></div>
-  <details class="create-box" open>
-    <summary>Crear un juego</summary>
-    <form method="post" action="/super/games" class="form-grid">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <label>Nombre<input name="name" required maxlength="80" placeholder="Ej.: Ruleta matemática"></label>
-      <label>Enlace corto opcional<input name="slug" maxlength="90" placeholder="ruleta-matematica"></label>
-      <label>Monto mínimo<input type="number" name="minAmount" value="10" min="1" required></label>
-      <label>Monto máximo<input type="number" name="maxAmount" value="500" min="1" required></label>
-      <label>Participantes por ronda<input type="number" name="maxPlayers" value="1" min="1" max="10" required><small>Entre 1 y 10.</small></label>
-      <label class="span-two">Descripción<textarea name="description" maxlength="500" rows="2" placeholder="Reglas breves que verá el participante"></textarea></label>
-      <button class="button button-primary" type="submit">Crear juego</button>
-    </form>
-  </details>
-
-  <div class="card-grid admin-games">
-    <% games.forEach((game) => { %>
-      <article class="panel game-admin-card">
-        <div><span class="badge <%= game.active ? 'badge-success' : 'badge-muted' %>"><%= game.active ? 'Activo' : 'Inactivo' %></span><h3><%= game.name %></h3><p><%= game.description || 'Sin descripción' %></p><small>Capacidad actual: <strong><%= game.max_players %></strong> participante(s)</small></div>
-        <% if (game.availableBetOptions?.length) { %>
-          <details class="create-box bet-settings">
-            <summary>Opciones para apostar</summary>
-            <form method="post" action="/super/games/<%= game.id %>/bet-options" class="form-stack">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <label>Un botón por línea<textarea name="options" rows="4" required maxlength="750"><%= game.availableBetOptions.join('\n') %></textarea></label>
-              <p class="help">Hasta 12 opciones. Ejemplo para bacará: Jugador, Banca y Empate, una por línea. Cambia las opciones cuando la mesa no tenga participaciones activas.</p>
-              <button class="button button-small button-secondary" type="submit">Guardar botonera</button>
-            </form>
-          </details>
-        <% } %>
-        <div class="card-actions">
-          <span><%= game.admin_count %> encargado(s)</span>
-          <form method="post" action="/super/games/<%= game.id %>/capacity" class="capacity-form">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <label>Capacidad<input type="number" name="maxPlayers" value="<%= game.max_players %>" min="1" max="10" required></label>
-            <button class="button button-small button-secondary" type="submit">Guardar</button>
-          </form>
-          <a class="button button-small" href="/admin/game/<%= game.id %>">Abrir mesa</a>
-          <form method="post" action="/super/games/<%= game.id %>/toggle">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <button class="button button-small button-secondary" type="submit"><%= game.active ? 'Desactivar' : 'Activar' %></button>
-          </form>
-        </div>
-      </article>
-    <% }) %>
-  </div>
-
-  <div class="two-columns">
-    <form method="post" action="/super/assignments" class="create-box form-stack">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <h3>Asignar un encargado</h3>
-      <label>Encargado<select name="userId" required><option value="">Seleccionar…</option><% users.filter(u => u.role === 'game_admin').forEach((u) => { %><option value="<%= u.id %>"><%= u.display_name %></option><% }) %></select></label>
-      <label>Juego<select name="gameId" required><option value="">Seleccionar…</option><% games.forEach((g) => { %><option value="<%= g.id %>"><%= g.name %></option><% }) %></select></label>
-      <button class="button button-primary" type="submit">Asignar</button>
-    </form>
-    <div class="create-box">
-      <h3>Asignaciones actuales</h3>
-      <% assignments.forEach((item) => { %>
-        <form method="post" action="/super/assignments/remove" class="assignment-row">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <input type="hidden" name="userId" value="<%= item.user_id %>"><input type="hidden" name="gameId" value="<%= item.game_id %>">
-          <span><strong><%= item.display_name %></strong><br><small><%= item.game_name %></small></span>
-          <button class="icon-button" type="submit" aria-label="Eliminar asignación">×</button>
-        </form>
-      <% }) %>
-      <% if (!assignments.length) { %><p class="muted">Todavía no hay encargados asignados.</p><% } %>
+<div class="card-grid casino-tables">
+  <% games.forEach(game=>{ const crew=assignments.filter(a=>Number(a.game_id)===Number(game.id)); %>
+  <article class="casino-table-card <%= game.active?'':'table-inactive' %>">
+    <div class="table-card-top"><span class="table-emblem" aria-hidden="true"><%= ['♠','♦','♣','♥'][Number(game.id)%4] %></span><span class="badge <%= game.active?'badge-success':'badge-muted' %>"><%= game.active?'Activa':'Inactiva' %></span></div>
+    <h2><%= game.name %></h2><p class="table-description"><%= game.description||'Mesa del casino escolar' %></p>
+    <div class="table-cash"><span>Monto actual de la mesa</span><strong>$<%= formatNumber(game.table_balance) %></strong><small>Caja inicial: $<%= formatNumber(game.initial_bankroll) %></small></div>
+    <div class="table-metrics">
+      <div><span>↗ Ganancias</span><strong>$<%= formatNumber(game.gains) %></strong><small>Apuestas perdidas por jugadores</small></div>
+      <div><span>↘ Pérdidas</span><strong>$<%= formatNumber(game.losses) %></strong><small>Ganancias pagadas a jugadores</small></div>
     </div>
-  </div>
+    <div class="table-facts"><span>Apuestas $<%= formatNumber(game.min_amount) %>–$<%= formatNumber(game.max_amount) %></span><span>Hasta <%= game.max_players %> jugadores</span></div>
+    <div class="table-crew"><span class="eyebrow">Encargados</span><% crew.forEach(person=>{ %><span class="crew-name"><%= person.display_name %><%= person.active===false?' · Inactivo':'' %></span><% }) %><% if(!crew.length){ %><span class="muted">Sin encargados asignados</span><% } %></div>
+    <div class="table-status"><span><%= game.waiting_count||0 %> en espera</span><span><%= game.playing_count||0 %> jugando</span></div>
+    <a class="button button-primary button-wide" href="/admin/game/<%= game.id %>">Operar mesa →</a>
+    <details class="table-manage"><summary>Administrar este juego</summary><div class="form-stack">
+      <form method="post" action="/super/assignments" class="form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="gameId" value="<%= game.id %>">
+        <label>Asignar encargado<select name="userId" required><option value="">Seleccionar…</option><% users.filter(u=>u.role==='game_admin'&&u.active&&!crew.some(a=>Number(a.user_id)===Number(u.id))).forEach(u=>{ %><option value="<%= u.id %>"><%= u.display_name %></option><% }) %></select></label><button class="button button-secondary" type="submit">Asignar a esta mesa</button>
+      </form>
+      <% crew.forEach(person=>{ %><form method="post" action="/super/assignments/remove" class="assignment-row"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="gameId" value="<%= game.id %>"><input type="hidden" name="userId" value="<%= person.user_id %>"><span><%= person.display_name %></span><button class="button button-small button-secondary" type="submit">Quitar</button></form><% }) %>
+      <% if(game.availableBetOptions?.length){ %>
+      <form method="post" action="/super/games/<%= game.id %>/bet-options" class="form-stack"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><label>Opciones para apostar (una por línea)<textarea name="options" rows="3" required maxlength="750"><%= game.availableBetOptions.join('\n') %></textarea></label><button class="button button-secondary" type="submit">Guardar botonera</button></form>
+      <% } %>
+      <form method="post" action="/super/games/<%= game.id %>/capacity" class="capacity-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><label>Capacidad<input type="number" name="maxPlayers" min="1" max="10" value="<%= game.max_players %>" required></label><button class="button button-secondary" type="submit">Guardar</button></form>
+      <form method="post" action="/super/games/<%= game.id %>/toggle"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button-secondary button-wide" type="submit"><%= game.active?'Desactivar juego':'Activar juego' %></button></form>
+    </div></details>
+  </article>
+  <% }) %>
+  <% if(!games.length){ %><div class="empty-state">Crea tu primer juego y asigna sus encargados.</div><% } %>
+</div>
+<section class="panel admin-section" id="nuevo-juego">
+  <div class="section-title"><div><span class="eyebrow">Nueva mesa</span><h2>Crear juego</h2></div><span class="badge badge-success">Caja inicial $30.000</span></div>
+  <form method="post" action="/super/games" class="form-grid">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>Nombre del juego<input name="name" required maxlength="80" placeholder="Ej.: Mano Dorada"></label>
+    <label>Apuesta mínima<input type="number" name="minAmount" min="1" value="500" required></label>
+    <label>Apuesta máxima<input type="number" name="maxAmount" min="1" value="5000" required></label>
+    <label>Jugadores por ronda<input type="number" name="maxPlayers" min="1" max="10" value="1" required></label>
+    <label class="span-two">Descripción<textarea name="description" maxlength="500" rows="2" placeholder="Reglas breves para los participantes"></textarea></label>
+    <fieldset class="crew-picker span-two"><legend>Encargados de esta mesa</legend><div class="crew-options"><% users.filter(u=>u.role==='game_admin'&&u.active).forEach(u=>{ %><label class="checkbox-label"><input type="checkbox" name="adminIds" value="<%= u.id %>"><%= u.display_name %></label><% }) %></div><% if(!users.some(u=>u.role==='game_admin'&&u.active)){ %><p class="help">Crea un encargado en Usuarios. También podrás asignarlo después.</p><% } %></fieldset>
+    <button class="button button-primary" type="submit">Crear mesa con $30.000</button>
+  </form>
 </section>
-
-<section class="panel admin-section" id="movimientos">
+<details class="panel admin-section" id="movimientos"><summary class="section-summary">Últimos movimientos</summary><div class="details-content">
   <div class="section-title"><div><span class="eyebrow">Auditoría</span><h2>Últimos movimientos</h2></div></div>
   <div class="table-wrap">
     <table>
@@ -215,9 +75,9 @@
       </tbody>
     </table>
   </div>
-</section>
+</div></details>
 
-<section class="panel admin-section" id="configuracion">
+<details class="panel admin-section" id="configuracion"><summary class="section-summary">Configuración del evento</summary><div class="details-content">
   <div class="section-title"><div><span class="eyebrow">Parámetros generales</span><h2>Configuración</h2></div></div>
   <form method="post" action="/super/settings" class="form-grid">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -227,5 +87,5 @@
     <label class="checkbox-label"><input type="checkbox" name="allowNegative" <%= settings.allow_negative ? 'checked' : '' %>> Permitir saldo negativo</label>
     <button class="button button-primary" type="submit">Guardar configuración</button>
   </form>
-</section>
+</div></details>
 <%- include('partials/footer') %>

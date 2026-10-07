@@ -1,0 +1,5 @@
+<nav class="admin-tabs" aria-label="Secciones de administración">
+  <% [{id:'juegos',url:'/super',icon:'♠',name:'Juegos'},{id:'usuarios',url:'/super/users',icon:'♣',name:'Usuarios'},{id:'qrs',url:'/super/qrs',icon:'♦',name:'QR Juegos'},{id:'inscripcion',url:'/super/registration',icon:'♥',name:'Inscripción por QR'}].forEach(tab=>{ %>
+    <a href="<%= tab.url %>" class="<%= adminSection===tab.id?'is-active':'' %>" <%- adminSection===tab.id?'aria-current="page"':'' %>><span aria-hidden="true"><%= tab.icon %></span><%= tab.name %></a>
+  <% }) %>
+</nav>

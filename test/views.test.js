@@ -17,6 +17,7 @@ const user = { id: 2, username: 'jugador1', display_name: 'Jugador', role: 'play
 const cases = [
   ['login.ejs', { settings, currentUser: null }],
   ['password.ejs', {}],
+  ['super-users.ejs', { users:[user],settings }],
   ['register.ejs', { settings: { ...settings, registration_open: true }, fields: {}, currentUser: null }],
   ['registration-qr.ejs', { settings: { ...settings, registration_open: true }, registrationUrl: 'https://casino.example/register' }],
   ['player.ejs', { player: user, transactions: [], settings, currentUser: { ...common.currentUser, role: 'player' } }],

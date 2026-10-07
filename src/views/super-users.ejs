@@ -1,0 +1,126 @@
+<%- include('partials/header') %>
+<%- include('partials/admin-nav',{adminSection:'usuarios'}) %>
+<section class="dashboard-head"><div><span class="eyebrow">Administración de cuentas</span><h1>Usuarios</h1><p class="muted">Crea, edita y organiza las cuentas por su función.</p></div></section>
+<section class="panel admin-section" id="usuarios">
+  <div class="section-title"><div><span class="eyebrow">Accesos</span><h2>Gestionar usuarios</h2></div></div>
+  <details class="create-box">
+    <summary>Crear usuario</summary>
+    <form method="post" action="/super/users" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Nombre visible<input name="displayName" required maxlength="80" placeholder="Ej.: Mesa Ruleta"></label>
+      <label>Usuario<input name="username" required pattern="[a-zA-Z0-9._-]{3,40}" placeholder="Ej.: mesa1"></label>
+      <label>Clave temporal<input type="password" name="password" required minlength="6"></label>
+      <label>Tipo de cuenta
+        <select name="role"><option value="player">Participante</option><option value="game_admin">Encargado de juego</option><option value="superadmin">Administración general</option></select>
+      </label>
+      <button class="button button-primary" type="submit">Crear cuenta</button>
+    </form>
+  </details>
+
+  <details class="create-box">
+    <summary>Generar muchas cuentas y descargar las claves</summary>
+    <p class="help">Crea cuentas anónimas numeradas y descarga un archivo CSV para repartir los accesos.</p>
+    <form method="post" action="/super/users/generate" class="form-grid">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label>Prefijo de usuario<input name="prefix" value="jugador" required pattern="[a-z][a-z0-9_-]{1,20}"></label>
+      <label>Nombre visible base<input name="namePrefix" value="Participante" required maxlength="50"></label>
+      <label>Número inicial<input type="number" name="start" value="1" min="1" required></label>
+      <label>Cantidad<input type="number" name="count" value="30" min="1" max="200" required></label>
+      <button class="button button-primary" type="submit">Crear y descargar CSV</button>
+    </form>
+  </details>
+
+  <details class="create-box">
+    <summary>Importar participantes desde CSV</summary>
+    <p class="help">Sube un CSV con la columna <code>Nombre completo</code> o columnas <code>Nombres</code> y <code>Apellidos</code>. También acepta una lista sin encabezado, un nombre completo por fila. Cada participante comienza con $10.000.</p>
+    <form method="post" action="/super/users/import" id="csv-import" class="form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <input type="hidden" name="csv">
+      <label>Archivo CSV<input type="file" accept=".csv,text/csv" required></label>
+      <label>En una sola columna, ¿cuántos nombres van antes del primer apellido?
+        <select name="givenNames"><option value="auto">Automático: dos si hay cuatro palabras; uno si hay dos o tres</option><option value="1">Un nombre: Ana Pérez González</option><option value="2">Dos nombres: Ana María Pérez González</option></select>
+      </label>
+      <p class="help">Para nombres compuestos o apellidos como «De la Cruz», usa columnas «Nombres» y «Primer apellido». Revisa los usuarios antes de crear. Si ya existe un usuario, se agregará un número. Las claves temporales se descargan en un CSV y deben cambiarse al ingresar.</p>
+      <div id="csv-preview" class="csv-preview" aria-live="polite"></div>
+      <button type="submit" class="button button-primary" disabled>Crear cuentas y descargar claves</button>
+    </form>
+  </details>
+  <script src="/csv-users.js" defer></script>
+  <script src="/import-users.js" defer></script>
+
+  <label class="user-search">Buscar por nombre o usuario<input type="search" id="user-search" placeholder="Buscar usuario…"></label>
+  <% [{role:'superadmin',name:'Administradores'},{role:'game_admin',name:'Encargados de juegos'},{role:'player',name:'Jugadores'}].forEach(group=>{ const groupUsers=users.filter(user=>user.role===group.role); %>
+  <section class="user-role-section">
+    <div class="section-title"><h3><%= group.name %></h3><span class="badge badge-muted"><%= groupUsers.length %></span></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Nombre</th><th>Usuario / rol</th><th>Saldo</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody>
+        <% groupUsers.forEach((user) => { %>
+          <tr class="user-row" data-search="<%= (user.display_name+' '+user.username).toLowerCase() %>">
+            <td><strong><%= user.display_name %></strong></td>
+            <td><code><%= user.username %></code><br><small><%= user.role === 'player' ? 'Participante' : user.role === 'game_admin' ? 'Encargado' : 'Administración' %></small></td>
+            <td><%= user.role === 'player' ? formatNumber(user.balance) : '—' %></td>
+            <td><span class="badge <%= user.active ? 'badge-success' : 'badge-muted' %>"><%= user.active ? 'Activa' : 'Inactiva' %></span></td>
+            <td>
+              <details class="action-menu">
+                <summary>Editar / gestionar</summary>
+                <form method="post" action="/super/users/<%= user.id %>/edit" class="mini-form">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <label>Nombre<input name="displayName" value="<%= user.display_name %>" required maxlength="80"></label>
+                  <label>Usuario<input name="username" value="<%= user.username %>" required pattern="[a-zA-Z0-9._-]{3,40}"></label>
+                  <button class="button button-small" type="submit">Guardar datos</button>
+                </form>
+                <% if (Number(user.id) !== Number(currentUser.id)) { %>
+                  <form method="post" action="/super/users/<%= user.id %>/role" class="mini-form">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <label>Rol de la cuenta
+                      <select name="role" required>
+                        <option value="player" <%= user.role === 'player' ? 'selected' : '' %>>Participante</option>
+                        <option value="game_admin" <%= user.role === 'game_admin' ? 'selected' : '' %>>Encargado de juego</option>
+                        <option value="superadmin" <%= user.role === 'superadmin' ? 'selected' : '' %>>Administración general</option>
+                      </select>
+                    </label>
+                    <button class="button button-small" type="submit">Cambiar rol</button>
+                  </form>
+                <% } else { %>
+                  <p class="help">Tu propia cuenta de administración no puede cambiar de rol desde aquí.</p>
+                <% } %>
+                <% if (user.role === 'player') { %>
+                  <form method="post" action="/super/users/<%= user.id %>/adjust" class="mini-form">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <label>Ajustar saldo<input type="number" name="amount" required placeholder="Ej.: 100 o -50"></label>
+                    <input name="note" maxlength="180" placeholder="Motivo">
+                    <button class="button button-small" type="submit">Aplicar</button>
+                  </form>
+                <% } %>
+                <form method="post" action="/super/users/<%= user.id %>/reset-password" class="mini-form">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <label>Clave temporal nueva<input type="password" name="password" minlength="6" required></label>
+                  <button class="button button-small" type="submit">Restablecer clave</button>
+                </form>
+                <form method="post" action="/super/users/<%= user.id %>/toggle">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="button button-small button-danger" type="submit"><%= user.active ? 'Desactivar cuenta' : 'Reactivar cuenta' %></button>
+                </form>
+                <% if(Number(user.id)!==Number(currentUser.id)) { %>
+                  <form method="post" action="/super/users/<%= user.id %>/delete" class="mini-form confirm-delete" data-name="<%= user.display_name %>">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="button button-small button-danger" type="submit">Eliminar usuario</button>
+                    <small>Su historial de movimientos se conserva.</small>
+                  </form>
+                <% } %>
+              </details>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% if(!groupUsers.length) { %><div class="empty-state">No hay usuarios en este grupo.</div><% } %>
+  </section>
+  <% }) %>
+</section>
+<script src="/admin-panel.js" defer></script>
+
+<%- include('partials/footer') %>

@@ -1,4 +1,5 @@
 <%- include('partials/header') %>
+<%- include('partials/admin-nav',{adminSection:'inscripcion'}) %>
 <section class="print-toolbar">
   <div><a class="back-link" href="/super">← Administración</a><span class="eyebrow">Acceso exclusivo de administración</span><h1>QR de inscripción</h1><p>Un QR para que cada participante cree su propia cuenta.</p></div>
   <% if (settings.registration_open) { %><button class="button button-primary" id="print-button" type="button">Imprimir QR</button><% } %>

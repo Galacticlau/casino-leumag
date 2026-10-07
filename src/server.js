@@ -17,6 +17,7 @@ const { startRound, cancelRound, completeRound } = require('./services/rounds');
 const { parseNames } = require('./public/csv-users');
 const { betOptions, parseOptions, joinGame } = require('./services/bets');
 const { registerPlayer } = require('./services/registration');
+const { gameCards, createGame, archiveUser } = require('./services/admin');
 const EmbeddedSessionStore = require('./session-store');
 
 const app = express();
@@ -95,6 +96,20 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 10
   }
 }));
+
+app.use((req, res, next) => {
+  if (!req.session.user) return next();
+  pool.query('SELECT id,username,display_name,role,active,archived_at FROM users WHERE id=$1', [req.session.user.id])
+    .then(result => {
+      const user=result.rows[0];
+      if (!user || !user.active || user.archived_at) return req.session.destroy(() => {
+        if (req.path.startsWith('/api/')) return res.status(401).json({ error:'La cuenta no está disponible.' });
+        res.redirect('/login');
+      });
+      Object.assign(req.session.user, { username:user.username, displayName:user.display_name, role:user.role });
+      next();
+    }).catch(next);
+});
 
 app.use((req, res, next) => {
   if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(24).toString('hex');
@@ -468,24 +483,37 @@ app.post('/admin/game/:id/rounds/:roundId/cancel', requireRole('game_admin', 'su
 // ---------- Administración general ----------
 
 app.get('/super', requireRole('superadmin'), asyncRoute(async (req, res) => {
-  const [users, games, assignments, transactions, settings, totals] = await Promise.all([
-    pool.query(`SELECT id, username, display_name, role, balance, active, must_change_password FROM users ORDER BY role, display_name`),
-    pool.query(`SELECT g.*, COUNT(ga.user_id)::int AS admin_count FROM games g LEFT JOIN game_admins ga ON ga.game_id = g.id GROUP BY g.id ORDER BY g.name`),
-    pool.query(`SELECT ga.user_id, ga.game_id, u.display_name, g.name AS game_name FROM game_admins ga JOIN users u ON u.id = ga.user_id JOIN games g ON g.id = ga.game_id ORDER BY g.name, u.display_name`),
-    pool.query(`SELECT t.*, p.display_name AS player_name, a.display_name AS admin_name, g.name AS game_name,
-       EXISTS(SELECT 1 FROM transactions r WHERE r.reversal_of = t.id) AS reversed
-       FROM transactions t JOIN users p ON p.id = t.user_id JOIN users a ON a.id = t.created_by
-       LEFT JOIN games g ON g.id = t.game_id ORDER BY t.created_at DESC LIMIT 60`),
-    getSettings(),
-    pool.query(`SELECT COUNT(*) FILTER (WHERE role = 'player')::int AS players,
-       COALESCE(SUM(balance) FILTER (WHERE role = 'player'), 0)::int AS circulating,
-       (SELECT COUNT(*)::int FROM transactions) AS transaction_count FROM users`)
+  const [users,games,assignments,transactions,settings]=await Promise.all([
+    pool.query("SELECT id,username,display_name,role,balance,active FROM users WHERE archived_at IS NULL ORDER BY display_name"),
+    gameCards(),
+    pool.query(`SELECT ga.user_id,ga.game_id,u.display_name,u.active FROM game_admins ga JOIN users u ON u.id=ga.user_id WHERE u.archived_at IS NULL ORDER BY u.display_name`),
+    pool.query(`SELECT t.*,p.display_name AS player_name,a.display_name AS admin_name,g.name AS game_name,
+      EXISTS(SELECT 1 FROM transactions r WHERE r.reversal_of=t.id) AS reversed
+      FROM transactions t JOIN users p ON p.id=t.user_id JOIN users a ON a.id=t.created_by
+      LEFT JOIN games g ON g.id=t.game_id ORDER BY t.created_at DESC LIMIT 60`),getSettings()
   ]);
-  res.render('super', {
-    title: 'Administración general', users: users.rows, games: games.rows.map(game => ({ ...game, availableBetOptions: betOptions(game) })),
-    assignments: assignments.rows, transactions: transactions.rows,
-    settings, totals: totals.rows[0]
-  });
+  res.render('super',{ title:'Juegos',users:users.rows,games:games.map(game=>({...game,availableBetOptions:betOptions(game)})),assignments:assignments.rows,transactions:transactions.rows,settings });
+}));
+
+app.get('/super/users', requireRole('superadmin'), asyncRoute(async (req,res)=>{
+  const [users,settings]=await Promise.all([pool.query('SELECT id,username,display_name,role,balance,active FROM users WHERE archived_at IS NULL ORDER BY display_name'),getSettings()]);
+  res.render('super-users',{title:'Usuarios',users:users.rows,settings});
+}));
+
+app.post('/super/users/:id/edit',requireRole('superadmin'),asyncRoute(async(req,res)=>{
+  const name=String(req.body.displayName||'').trim(), username=String(req.body.username||'').trim().toLowerCase();
+  if(!name || name.length>80 || !/^[a-z0-9._-]{3,40}$/.test(username)) { setFlash(req,'error','Revisa el nombre y el usuario (3 a 40 caracteres).'); return res.redirect('/super/users'); }
+  try {
+    const result=await pool.query('UPDATE users SET display_name=$1,username=$2,updated_at=NOW() WHERE id=$3 AND archived_at IS NULL',[name,username,req.params.id]);
+    setFlash(req,result.rowCount?'success':'error',result.rowCount?'Datos actualizados.':'La cuenta no existe.');
+  } catch(error){if(error.code==='23505')setFlash(req,'error','Ese usuario ya existe.');else throw error;}
+  res.redirect('/super/users');
+}));
+
+app.post('/super/users/:id/delete',requireRole('superadmin'),asyncRoute(async(req,res)=>{
+  try{await archiveUser({userId:req.params.id,actorId:req.session.user.id});setFlash(req,'success','Usuario eliminado del listado. Su historial de movimientos se conserva.');}
+  catch(error){setFlash(req,'error',error.message);}
+  res.redirect('/super/users');
 }));
 
 app.post('/super/users', requireRole('superadmin'), asyncRoute(async (req, res) => {
@@ -495,7 +523,7 @@ app.post('/super/users', requireRole('superadmin'), asyncRoute(async (req, res) 
   const role = ['player', 'game_admin', 'superadmin'].includes(req.body.role) ? req.body.role : 'player';
   if (!/^[a-z0-9._-]{3,40}$/.test(username) || !displayName || password.length < 6) {
     setFlash(req, 'error', 'Revisa los datos: usuario de 3 a 40 caracteres y clave de al menos 6 caracteres.');
-    return res.redirect('/super#usuarios');
+    return res.redirect('/super/users');
   }
   const settings = await getSettings();
   const startingBalance = role === 'player' ? settings.initial_balance : 0;
@@ -524,7 +552,7 @@ app.post('/super/users', requireRole('superadmin'), asyncRoute(async (req, res) 
   } finally {
     client.release();
   }
-  res.redirect('/super#usuarios');
+  res.redirect('/super/users');
 }));
 
 app.post('/super/users/generate', requireRole('superadmin'), asyncRoute(async (req, res) => {
@@ -534,7 +562,7 @@ app.post('/super/users/generate', requireRole('superadmin'), asyncRoute(async (r
   const start = Number(req.body.start || 1);
   if (!/^[a-z][a-z0-9_-]{1,20}$/.test(prefix) || !namePrefix || !Number.isSafeInteger(count) || count < 1 || count > 200 || !Number.isSafeInteger(start) || start < 1) {
     setFlash(req, 'error', 'Para generar el lote, usa un prefijo válido y una cantidad entre 1 y 200.');
-    return res.redirect('/super#usuarios');
+    return res.redirect('/super/users');
   }
 
   const settings = await getSettings();
@@ -566,7 +594,7 @@ app.post('/super/users/generate', requireRole('superadmin'), asyncRoute(async (r
     await client.query('ROLLBACK');
     if (error.code === '23505') {
       setFlash(req, 'error', 'El lote coincide con cuentas existentes. Cambia el prefijo o el número inicial.');
-      return res.redirect('/super#usuarios');
+      return res.redirect('/super/users');
     }
     throw error;
   } finally {
@@ -588,7 +616,7 @@ app.post('/super/users/import', requireRole('superadmin'), asyncRoute(async (req
     names = parseNames(req.body.csv || '', mode);
   } catch (error) {
     setFlash(req, 'error', error.message);
-    return res.redirect('/super#usuarios');
+    return res.redirect('/super/users');
   }
   const client = await pool.connect();
   const created = [];
@@ -631,21 +659,21 @@ app.post('/super/users/:id/role', requireRole('superadmin'), asyncRoute(async (r
 
   if (!Number.isSafeInteger(userId) || !allowedRoles.includes(role)) {
     setFlash(req, 'error', 'El rol seleccionado no es válido.');
-    return res.redirect('/super#usuarios');
+    return res.redirect('/super/users');
   }
   if (userId === req.session.user.id) {
     setFlash(req, 'error', 'No puedes cambiar el rol de tu propia cuenta mientras estás usando la administración.');
-    return res.redirect('/super#usuarios');
+    return res.redirect('/super/users');
   }
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const current = await client.query('SELECT role FROM users WHERE id = $1 FOR UPDATE', [userId]);
+    const current = await client.query('SELECT role FROM users WHERE id = $1 AND archived_at IS NULL FOR UPDATE', [userId]);
     if (!current.rowCount) {
       await client.query('ROLLBACK');
       setFlash(req, 'error', 'La cuenta seleccionada no existe.');
-      return res.redirect('/super#usuarios');
+      return res.redirect('/super/users');
     }
 
     await client.query('UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2', [role, userId]);
@@ -660,17 +688,17 @@ app.post('/super/users/:id/role', requireRole('superadmin'), asyncRoute(async (r
   } finally {
     client.release();
   }
-  return res.redirect('/super#usuarios');
+  return res.redirect('/super/users');
 }));
 
 app.post('/super/users/:id/toggle', requireRole('superadmin'), asyncRoute(async (req, res) => {
   if (Number(req.params.id) === req.session.user.id) {
     setFlash(req, 'error', 'No puedes desactivar tu propia cuenta.');
   } else {
-    await pool.query('UPDATE users SET active = NOT active, updated_at = NOW() WHERE id = $1', [req.params.id]);
+    await pool.query('UPDATE users SET active = NOT active, updated_at = NOW() WHERE id = $1 AND archived_at IS NULL', [req.params.id]);
     setFlash(req, 'success', 'Estado de la cuenta actualizado.');
   }
-  res.redirect('/super#usuarios');
+  res.redirect('/super/users');
 }));
 
 app.post('/super/users/:id/reset-password', requireRole('superadmin'), asyncRoute(async (req, res) => {
@@ -682,7 +710,7 @@ app.post('/super/users/:id/reset-password', requireRole('superadmin'), asyncRout
     await pool.query('UPDATE users SET password_hash = $1, must_change_password = TRUE, updated_at = NOW() WHERE id = $2', [hash, req.params.id]);
     setFlash(req, 'success', 'Clave restablecida.');
   }
-  res.redirect('/super#usuarios');
+  res.redirect('/super/users');
 }));
 
 app.post('/super/users/:id/adjust', requireRole('superadmin'), asyncRoute(async (req, res) => {
@@ -695,33 +723,15 @@ app.post('/super/users/:id/adjust', requireRole('superadmin'), asyncRoute(async 
   } catch (error) {
     setFlash(req, 'error', error.message);
   }
-  res.redirect('/super#usuarios');
+  res.redirect('/super/users');
 }));
 
-app.post('/super/games', requireRole('superadmin'), asyncRoute(async (req, res) => {
-  const name = String(req.body.name || '').trim();
-  const slug = slugify(req.body.slug || name);
-  const minAmount = Number(req.body.minAmount);
-  const maxAmount = Number(req.body.maxAmount);
-  const maxPlayers = Number(req.body.maxPlayers || 1);
-  if (!name || !slug || !Number.isSafeInteger(minAmount) || !Number.isSafeInteger(maxAmount)
-    || minAmount <= 0 || maxAmount < minAmount || !Number.isSafeInteger(maxPlayers)
-    || maxPlayers < 1 || maxPlayers > 10) {
-    setFlash(req, 'error', 'Revisa el nombre, los montos y la capacidad de 1 a 10 participantes.');
-    return res.redirect('/super#juegos');
-  }
+app.post('/super/games',requireRole('superadmin'),asyncRoute(async(req,res)=>{
   try {
-    await pool.query(
-      `INSERT INTO games (name, slug, description, min_amount, max_amount, max_players)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [name, slug, String(req.body.description || '').trim(), minAmount, maxAmount, maxPlayers]
-    );
-    setFlash(req, 'success', 'Juego creado.');
-  } catch (error) {
-    if (error.code === '23505') setFlash(req, 'error', 'Ya existe un juego con ese enlace.');
-    else throw error;
-  }
-  res.redirect('/super#juegos');
+    await createGame({name:req.body.name,slug:slugify(req.body.slug||req.body.name||''),description:req.body.description,minAmount:req.body.minAmount,maxAmount:req.body.maxAmount,maxPlayers:req.body.maxPlayers,adminIds:req.body.adminIds});
+    setFlash(req,'success','Juego creado con $30.000 de caja inicial y sus encargados asignados.');
+  }catch(error){setFlash(req,'error',error.message);}
+  res.redirect('/super');
 }));
 
 app.post('/super/games/:id/bet-options', requireRole('superadmin'), asyncRoute(async (req, res) => {
@@ -740,13 +750,13 @@ app.post('/super/games/:id/bet-options', requireRole('superadmin'), asyncRoute(a
     finally { client.release(); }
     setFlash(req, 'success', 'Botonera de apuestas actualizada.');
   } catch (error) { setFlash(req, 'error', error.message); }
-  res.redirect('/super#juegos');
+  res.redirect('/super');
 }));
 
 app.post('/super/games/:id/toggle', requireRole('superadmin'), asyncRoute(async (req, res) => {
   await pool.query('UPDATE games SET active = NOT active WHERE id = $1', [req.params.id]);
   setFlash(req, 'success', 'Estado del juego actualizado.');
-  res.redirect('/super#juegos');
+  res.redirect('/super');
 }));
 
 app.post('/super/games/:id/capacity', requireRole('superadmin'), asyncRoute(async (req, res) => {
@@ -757,22 +767,21 @@ app.post('/super/games/:id/capacity', requireRole('superadmin'), asyncRoute(asyn
     await pool.query('UPDATE games SET max_players = $1 WHERE id = $2', [maxPlayers, req.params.id]);
     setFlash(req, 'success', 'Capacidad del juego actualizada.');
   }
-  res.redirect('/super#juegos');
+  res.redirect('/super');
 }));
 
-app.post('/super/assignments', requireRole('superadmin'), asyncRoute(async (req, res) => {
-  await pool.query(
-    `INSERT INTO game_admins (user_id, game_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-    [req.body.userId, req.body.gameId]
-  );
-  setFlash(req, 'success', 'Encargado asignado.');
-  res.redirect('/super#juegos');
+app.post('/super/assignments',requireRole('superadmin'),asyncRoute(async(req,res)=>{
+  const result=await pool.query(`INSERT INTO game_admins(user_id,game_id)
+    SELECT u.id,g.id FROM users u CROSS JOIN games g WHERE u.id=$1 AND g.id=$2
+    AND u.role='game_admin' AND u.active=TRUE AND u.archived_at IS NULL ON CONFLICT DO NOTHING`,[req.body.userId,req.body.gameId]);
+  setFlash(req,result.rowCount?'success':'error',result.rowCount?'Encargado asignado.':'Selecciona un encargado activo y un juego válido; la asignación puede existir ya.');
+  res.redirect('/super');
 }));
 
 app.post('/super/assignments/remove', requireRole('superadmin'), asyncRoute(async (req, res) => {
   await pool.query('DELETE FROM game_admins WHERE user_id = $1 AND game_id = $2', [req.body.userId, req.body.gameId]);
   setFlash(req, 'success', 'Asignación eliminada.');
-  res.redirect('/super#juegos');
+  res.redirect('/super');
 }));
 
 app.post('/super/transactions/:id/reverse', requireRole('superadmin'), asyncRoute(async (req, res) => {
@@ -804,7 +813,7 @@ app.post('/super/settings', requireRole('superadmin'), asyncRoute(async (req, re
 
 app.get('/super/qrs', requireRole('superadmin'), asyncRoute(async (req, res) => {
   const [games, settings] = await Promise.all([
-    pool.query('SELECT * FROM games WHERE active = TRUE ORDER BY name'), getSettings()
+    pool.query('SELECT * FROM games ORDER BY active DESC, name'), getSettings()
   ]);
   res.render('qr-sheet', { title: 'Códigos QR', games: games.rows, settings });
 }));

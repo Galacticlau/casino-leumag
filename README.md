@@ -225,3 +225,16 @@ Las opciones se pueden editar cuando no hay participantes pendientes ni una rond
 En **Administración → Inscripción por QR**, abre «Generar y administrar QR de inscripción» y pulsa **Generar QR y abrir inscripción**. Puedes imprimir el QR o compartir el enlace. El QR lleva a `/register`, donde cada participante escribe su nombre completo, elige un usuario `nombre.apellido` y una clave. Se aceptan claves sencillas como `123` o `1`, sin largo mínimo ni requisitos de composición. La clave se almacena cifrada mediante hash, y no se exige cambiarla al entrar.
 
 Cada cuenta creada aquí es participante, comienza con $10.000 y registra su saldo inicial en los movimientos. Si el usuario ya existe, el formulario pide agregar un número o iniciar sesión. La inscripción comienza cerrada y solo la administración general puede abrirla o cerrarla. Al cerrarla, las cuentas existentes conservan su acceso; al reabrirla sirve el mismo QR.
+
+
+### Panel de administración por secciones
+
+La administración general tiene cuatro páginas: **Juegos**, **Usuarios**, **QR Juegos** e **Inscripción por QR**. Juegos es la pantalla inicial y muestra tarjetas de cada mesa con caja actual, ganancias, pérdidas, encargados y participantes esperando o jugando. Pulsa «Actualizar cajas» para consultar los movimientos más recientes.
+
+Cada juego comienza con $30.000 de caja. Desde la perspectiva de la mesa, las ganancias son los montos que pierden los jugadores; las pérdidas son las ganancias pagadas a los jugadores. Caja actual = caja inicial + ganancias − pérdidas. Los movimientos revertidos se excluyen de estos totales. Los saldos de las cuentas de participantes siguen siendo independientes de la caja de las mesas.
+
+Al crear un juego, indica nombre, mínimo y máximo de apuestas y capacidad, y selecciona uno o varios encargados activos. La asignación también se puede modificar desde «Administrar este juego» en cada tarjeta.
+
+En Usuarios, las cuentas aparecen separadas en administradores, encargados de juegos y jugadores. Puedes crear, buscar, editar, cambiar rol, restablecer clave, desactivar y eliminar del listado una cuenta. La eliminación retira el acceso y las asignaciones y conserva los movimientos para auditoría; no permite eliminar tu propia cuenta ni a un participante con una ronda en juego.
+
+QR Juegos muestra las tarjetas de todos los juegos, incluidos los inactivos, y permite imprimirlas. Un juego inactivo no admite participaciones. Inscripción por QR mantiene su QR público de registro y sus controles de apertura y cierre exclusivos de administración.

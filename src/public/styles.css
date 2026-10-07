@@ -299,3 +299,50 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:3px solid
 @media print { .registration-controls { display:none!important; } }
 
 .qr-card small { overflow-wrap:anywhere; }
+
+.admin-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; padding:8px; margin-bottom:32px; border:1px solid var(--border); border-radius:18px; background:#071b12; }
+.admin-tabs a { display:flex; align-items:center; justify-content:center; gap:10px; padding:16px 10px; border-radius:12px; color:var(--muted); font-weight:750; text-align:center; }
+.admin-tabs a span { color:var(--gold); font-size:1.35rem; }
+.admin-tabs .is-active { color:#231b0c; background:linear-gradient(135deg,#f4dda0,#d3ac62); box-shadow:0 4px 16px #0003; }
+.admin-tabs .is-active span { color:#231b0c; }
+.casino-tables { grid-template-columns:repeat(3,minmax(0,1fr)); align-items:start; margin-bottom:38px; }
+.casino-table-card { position:relative; overflow:hidden; border:1px solid #967b42; border-radius:22px; padding:24px; background:radial-gradient(ellipse at 100% 0%,#2c6740,#123521 56%,#091e14); box-shadow:0 18px 42px #0005,inset 0 0 0 5px #cdaa4d08; }
+.casino-table-card:nth-child(3n+2) { background:radial-gradient(ellipse at 100% 0%,#673140,#341e27 56%,#1d1218); }
+.casino-table-card:nth-child(3n+3) { background:radial-gradient(ellipse at 100% 0%,#38465d,#172831 56%,#0d171d); }
+.table-card-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.table-emblem { display:grid; place-items:center; width:50px; height:58px; color:#efe0ad; font-size:2.3rem; background:#ffffff08; border:1px solid var(--border); border-radius:12px; }
+.casino-table-card h2 { font-family:Georgia,serif; font-size:1.8rem; letter-spacing:0; }
+.table-description { color:var(--muted); font-size:.85rem; min-height:2.5em; }
+.table-cash { display:grid; gap:4px; padding:18px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+.table-cash>span { color:#c5cfbb; font-size:.8rem; }
+.table-cash>strong { font-size:2.6rem; line-height:1.2; color:#f5d990; letter-spacing:-.035em; }
+.table-cash small { font-size:.72rem; }
+.table-metrics { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:18px 0; }
+.table-metrics div { display:grid; gap:5px; }
+.table-metrics span { font-size:.78rem; color:#96dfb0; }
+.table-metrics div:nth-child(2) span { color:#efa7b2; }
+.table-metrics strong { font-size:1.3rem; }
+.table-metrics small { font-size:.65rem; }
+.table-facts { display:flex; flex-wrap:wrap; gap:8px; color:var(--muted); font-size:.75rem; }
+.table-facts span { padding:5px 8px; border-radius:8px; background:#0002; }
+.table-crew { display:flex; flex-wrap:wrap; gap:7px; margin:18px 0; font-size:.8rem; }
+.table-crew .eyebrow { width:100%; margin:0; }
+.crew-name { border:1px solid var(--border); border-radius:20px; padding:5px 10px; }
+.table-status { display:flex; gap:16px; margin-bottom:16px; font-size:.75rem; color:var(--muted); }
+.table-manage { margin-top:16px; font-size:.85rem; }
+.table-manage summary { cursor:pointer; color:var(--gold); padding:8px 0; }
+.table-manage>div { margin-top:16px; }
+.table-inactive { opacity:.7; }
+.crew-picker { border:1px solid var(--border); border-radius:12px; padding:12px 16px; min-width:0; }
+.crew-picker legend { color:var(--gold); font-size:.85rem; padding:0 5px; }
+.crew-options { display:flex; flex-wrap:wrap; gap:8px 20px; max-height:160px; overflow:auto; }
+.user-role-section { margin-top:32px; padding-top:18px; border-top:1px solid var(--border); }
+.user-search { margin-top:24px; max-width:600px; }
+.user-role-section .action-menu { min-width:160px; }
+.section-summary { cursor:pointer; color:var(--gold); font-weight:800; font-size:1.15rem; }
+.details-content { padding-top:24px; }
+@media(max-width:1050px) { .casino-tables { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:640px) { .admin-tabs { grid-template-columns:1fr 1fr; gap:6px; } .admin-tabs a { font-size:.82rem; padding:12px 6px; gap:6px; } .casino-tables { grid-template-columns:1fr; } }
+@media print { .admin-tabs { display:none!important; } }
+
+.dashboard-actions { display:flex; gap:10px; flex-wrap:wrap; }
