@@ -1,6 +1,6 @@
 const { pool } = require('../db');
 
-async function gameCards() {
+async function gameCards(userId = null, gameId = null) {
   const result = await pool.query(`SELECT g.*,
     COALESCE(m.gains,0)::bigint AS gains, COALESCE(m.losses,0)::bigint AS losses,
     (g.initial_bankroll + COALESCE(m.gains,0) - COALESCE(m.losses,0))::bigint AS table_balance,
@@ -12,7 +12,10 @@ async function gameCards() {
       FROM transactions t WHERE t.type='game_result'
         AND NOT EXISTS(SELECT 1 FROM transactions reversal WHERE reversal.reversal_of=t.id)
       GROUP BY t.game_id
-    ) m ON m.game_id=g.id ORDER BY g.active DESC,g.name`);
+    ) m ON m.game_id=g.id
+    WHERE ($1::integer IS NULL OR EXISTS(SELECT 1 FROM game_admins ga WHERE ga.game_id=g.id AND ga.user_id=$1))
+      AND ($2::integer IS NULL OR g.id=$2)
+    ORDER BY g.active DESC,g.name`, [userId, gameId]);
   return result.rows;
 }
 

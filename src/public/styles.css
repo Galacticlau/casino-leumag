@@ -346,3 +346,10 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:3px solid
 @media print { .admin-tabs { display:none!important; } }
 
 .dashboard-actions { display:flex; gap:10px; flex-wrap:wrap; }
+
+.game-finances { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:20px 0; }
+.game-finances > div { padding:16px; border:1px solid rgba(220,185,104,.3); border-radius:14px; background:rgba(4,24,17,.6); }
+.game-finances span { display:block; color:var(--muted,#b5c4b9); font-size:.85rem; margin-bottom:8px; }
+.game-finances strong { display:block; color:#ebcd86; font-size:1.4rem; font-variant-numeric:tabular-nums; }
+.game-card .game-finances { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media(max-width:700px) { .game-finances { grid-template-columns:repeat(2,minmax(0,1fr)); } .game-finances strong { font-size:1.2rem; } }

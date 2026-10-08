@@ -8,7 +8,8 @@
       <span class="status-dot <%= game.active ? 'online' : '' %>"></span>
       <h2><%= game.name %></h2>
       <p><%= game.active ? 'Puesto activo' : 'Puesto desactivado' %> · hasta <%= game.max_players %> por ronda</p>
-      <strong><%= game.pending_count %> esperando<%= game.playing_count ? ` · ${game.playing_count} jugando` : '' %></strong>
+      <%- include('partials/table-finance', { game }) %>
+      <strong><%= game.waiting_count %> esperando<%= game.playing_count ? ` · ${game.playing_count} jugando` : '' %></strong>
     </a>
   <% }) %>
   <% if (!games.length) { %><div class="empty-state">No tienes juegos asignados.</div><% } %>

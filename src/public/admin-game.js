@@ -262,6 +262,11 @@
       });
       if (!response.ok) throw new Error('No se pudo actualizar');
       const data = await response.json();
+      if (data.finance) {
+        document.querySelectorAll('[data-finance]').forEach((element) => {
+          element.textContent = '$' + Number(data.finance[element.dataset.finance]).toLocaleString('es-CL');
+        });
+      }
       const roundSignature = JSON.stringify(data.activeRound
         ? [data.activeRound.id, data.activeRound.participants.map((item) => [item.request_id, item.balance, item.bet_amount, item.bet_option])]
         : null);

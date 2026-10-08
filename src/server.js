@@ -377,25 +377,16 @@ app.post('/player/request/:id/cancel', requireRole('player'), asyncRoute(async (
 // ---------- Encargados de juego ----------
 
 app.get('/admin', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
-  const query = req.session.user.role === 'superadmin'
-    ? `SELECT g.*, COUNT(r.id) FILTER (WHERE r.status = 'pending' AND r.expires_at > NOW())::int AS pending_count,
-       COUNT(r.id) FILTER (WHERE r.status = 'playing')::int AS playing_count
-       FROM games g LEFT JOIN join_requests r ON r.game_id = g.id GROUP BY g.id ORDER BY g.name`
-    : `SELECT g.*, COUNT(r.id) FILTER (WHERE r.status = 'pending' AND r.expires_at > NOW())::int AS pending_count,
-       COUNT(r.id) FILTER (WHERE r.status = 'playing')::int AS playing_count
-       FROM games g JOIN game_admins ga ON ga.game_id = g.id
-       LEFT JOIN join_requests r ON r.game_id = g.id
-       WHERE ga.user_id = $1 GROUP BY g.id ORDER BY g.name`;
-  const games = await pool.query(query, req.session.user.role === 'superadmin' ? [] : [req.session.user.id]);
-  res.render('admin-index', { title: 'Mis juegos', games: games.rows });
+  const games = await gameCards(req.session.user.role === 'superadmin' ? null : req.session.user.id);
+  res.render('admin-index', { title: 'Mis juegos', games });
 }));
 
 app.get('/admin/game/:id', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
   if (!(await canManageGame(req.session.user, req.params.id))) return res.status(403).render('error', { title: 'Acceso restringido', message: 'Este juego no está asignado a tu cuenta.' });
-  const gameResult = await pool.query('SELECT * FROM games WHERE id = $1', [req.params.id]);
-  if (!gameResult.rowCount) return res.status(404).render('error', { title: 'Juego no encontrado', message: 'El juego solicitado no existe.' });
+  const games = await gameCards(null, req.params.id);
+  if (!games.length) return res.status(404).render('error', { title: 'Juego no encontrado', message: 'El juego solicitado no existe.' });
   const settings = await getSettings();
-  res.render('admin-game', { title: gameResult.rows[0].name, game: gameResult.rows[0], settings });
+  res.render('admin-game', { title: games[0].name, game: games[0], settings });
 }));
 
 app.get('/api/admin/game/:id/queue', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
@@ -434,7 +425,8 @@ app.get('/api/admin/game/:id/queue', requireRole('game_admin', 'superadmin'), as
       }))
     };
   }
-  res.json({ requests: queueResult.rows, activeRound });
+  const [finance] = await gameCards(null, req.params.id);
+  res.json({ requests: queueResult.rows, activeRound, finance: finance ? { initial_bankroll: finance.initial_bankroll, table_balance: finance.table_balance, gains: finance.gains, losses: finance.losses } : null });
 }));
 
 app.post('/admin/game/:id/rounds/start', requireRole('game_admin', 'superadmin'), asyncRoute(async (req, res) => {
