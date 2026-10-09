@@ -10,6 +10,7 @@
 </section>
 
 <section id="queue-app"
+  data-bingo="<%= /bingo/i.test(`${game.name} ${game.slug}`) %>"
   data-golden-key="<%= /llave[ -]magica/.test(`${game.name} ${game.slug}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()) %>"
   data-game-id="<%= game.id %>"
   data-min="<%= game.min_amount %>"

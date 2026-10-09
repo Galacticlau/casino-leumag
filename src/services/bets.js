@@ -2,10 +2,12 @@ const { pool } = require('../db');
 function isGoldenKey(game) {
   return /(?:^|\s|-)llave(?:\s|-)magica(?:$|\s|-)/.test(`${game.name || ''} ${game.slug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
 }
+function isBingo(game) { return /bingo/i.test(`${game.name || ''} ${game.slug || ''}`); }
 function betOptions(game) {
+  if (isBingo(game)) return ['Participar'];
   if (isGoldenKey(game)) return ['Participar'];
   const name = `${game.name || ''} ${game.slug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (/bingo|ruleta/.test(name)) return [];
+  if (/ruleta/.test(name)) return [];
   let options = game.bet_options;
   if (typeof options === 'string') {
     try { options = JSON.parse(options); } catch { options = null; }
@@ -58,4 +60,4 @@ async function joinGame({ slug, userId, amount, option }) {
   } catch (error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); }
 }
-module.exports = { isGoldenKey, betOptions, parseOptions, validateBet, joinGame };
+module.exports = { isBingo, isGoldenKey, betOptions, parseOptions, validateBet, joinGame };

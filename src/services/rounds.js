@@ -1,5 +1,5 @@
 const { pool } = require('../db');
-const { betOptions, validateBet, isGoldenKey } = require('./bets');
+const { betOptions, validateBet, isGoldenKey, isBingo } = require('./bets');
 const { validateAmount } = require('./ledger');
 
 function normalizeRequestIds(rawIds) {
@@ -152,12 +152,15 @@ async function completeRound({ gameId, roundId, results, createdBy }) {
       const direction = item.outcome === 'loss' ? -1 : 1;
       const participant = participants.find((p) => Number(p.request_id) === requestId);
       const rawAmount = item.outcome === 'loss' && participant?.bet_amount ? participant.bet_amount : item.amount;
-      const amount = isGoldenKey(round)
+      if (isBingo(round) && !participant?.bet_amount) throw new Error('El participante debe volver a entrar al bingo y confirmar su apuesta.');
+      const amount = isBingo(round)
+        ? Number(participant.bet_amount) * (item.outcome === 'win' ? 2 : -1)
+        : isGoldenKey(round)
         ? ({ win: 15000, refund: 0, loss: -500 })[item.outcome]
         : participant?.bet_amount && item.outcome === 'loss'
         ? -Number(participant.bet_amount)
         : validateAmount(direction * Math.abs(Number(rawAmount)), round.min_amount, round.max_amount);
-      resultByRequest.set(requestId, { amount, note: isGoldenKey(round) ? ({win:'Ganó $15.000',refund:'Devolución de apuesta: saldo sin cambios',loss:'Pérdida parcial de $500'})[item.outcome] : String(item.note || '').trim().slice(0, 180) });
+      resultByRequest.set(requestId, { amount, note: isBingo(round) ? (item.outcome === 'win' ? 'Bingo: premio total triple de la apuesta; se acredita ganancia neta doble' : 'Bingo: pérdida de la apuesta') : isGoldenKey(round) ? ({win:'Ganó $15.000',refund:'Devolución de apuesta: saldo sin cambios',loss:'Pérdida parcial de $500'})[item.outcome] : String(item.note || '').trim().slice(0, 180) });
     }
     if (resultByRequest.size !== participants.length
       || participants.some((item) => !resultByRequest.has(Number(item.request_id)))) {

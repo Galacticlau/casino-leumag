@@ -32,7 +32,7 @@
         <label><%= goldenKey ? 'Apuesta fija' : 'Otro monto' %><input type="number" name="betAmount" id="bet-amount" value="<%= goldenKey ? 1000 : '' %>" <%= goldenKey ? 'readonly' : '' %> min="<%= game.min_amount %>" max="<%= Math.min(game.max_amount, balance) %>" inputmode="numeric" required placeholder="Ingresa un monto"></label>
       </fieldset>
       <p class="bet-summary" id="bet-summary" aria-live="polite">Elige una opción y un monto.</p>
-      <p class="help">La apuesta se confirma antes de iniciar la ronda. <%= goldenKey ? 'Resultados posibles: ganar $15.000, devolución completa (saldo sin cambios) o perder solo $500.' : 'Si pierdes, se descuenta ese monto; si ganas, la encargada registra tu ganancia.' %> El saldo cambia al cerrar la ronda. Para cambiar tu apuesta, cancela la espera y vuelve a entrar.</p>
+      <p class="help">La apuesta se confirma antes de iniciar la ronda. <%= goldenKey ? 'Resultados posibles: ganar $15.000, devolución completa (saldo sin cambios) o perder solo $500.' : /bingo/i.test(`${game.name} ${game.slug}`) ? 'Si pierdes, pierdes tu apuesta. Si ganas, recibes el triple en total: tu apuesta más el doble como ganancia neta.' : 'Si pierdes, se descuenta ese monto; si ganas, la encargada registra tu ganancia.' %> El saldo cambia al cerrar la ronda. Para cambiar tu apuesta, cancela la espera y vuelve a entrar.</p>
     <% } %>
     <button class="button button-primary button-wide button-large" type="submit" <%= options.length && balance < game.min_amount ? 'disabled' : '' %>><%= options.length ? 'Confirmar apuesta y entrar a la fila' : 'Avisar que estoy listo' %></button>
     <% if (options.length && balance < game.min_amount) { %><p class="help">Tu saldo no alcanza para la apuesta mínima.</p><% } %>

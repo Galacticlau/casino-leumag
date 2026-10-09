@@ -1,6 +1,7 @@
 (() => {
   const app = document.querySelector('#queue-app');
   if (!app) return;
+  const bingo = app.dataset.bingo === 'true';
   const goldenKey = app.dataset.goldenKey === 'true';
   const gameId = app.dataset.gameId;
   const minimum = Number(app.dataset.min);
@@ -50,7 +51,7 @@
     input.className = 'round-outcome';
     const outcomes = goldenKey ? ['win', 'refund', 'loss'] : ['win', 'loss'];
     const buttons = outcomes.map((value) => {
-      const button = element('button', `outcome-button outcome-${value}`, goldenKey ? ({win:'Ganó $15.000',refund:'Devolver $1.000',loss:'Perdió $500'})[value] : value === 'win' ? '↑ Ganó' : '↓ Perdió');
+      const button = element('button', `outcome-button outcome-${value}`, bingo ? (value === 'win' ? 'Ganó: premio ×3' : 'Perdió su apuesta') : goldenKey ? ({win:'Ganó $15.000',refund:'Devolver $1.000',loss:'Perdió $500'})[value] : value === 'win' ? '↑ Ganó' : '↓ Perdió');
       button.type = 'button';
       button.setAttribute('aria-pressed', 'false');
       button.addEventListener('click', () => { input.value = value; input.dispatchEvent(new Event('change')); });
@@ -141,14 +142,14 @@
         amountLabel.append(element('small', '', 'Si perdió, se descuenta exactamente su apuesta. Si ganó, indica la ganancia sin incluir la devolución de la apuesta.'));
       }
       amountLabel.hidden = true;
-      if (goldenKey) {
+      if (goldenKey || bingo) {
         amount.required = false;
         amount.disabled = true;
         amountLabel.append(element('small', '', 'El monto se calcula automáticamente según el resultado.'));
       }
       outcome.querySelector('input').addEventListener('change', () => {
         const result = outcome.querySelector('input').value;
-        amountLabel.hidden = goldenKey || (result !== 'win' && Boolean(item.bet_amount));
+        amountLabel.hidden = goldenKey || bingo || (result !== 'win' && Boolean(item.bet_amount));
       });
       fields.append(outcomeLabel, amountLabel);
       card.append(fields);

@@ -14,11 +14,11 @@ test.before(async () => {
   gameId = (await pool.query("INSERT INTO games (name,slug,min_amount,max_amount,bet_options) VALUES ('Bacará','bacara',100,1000,$1::jsonb) RETURNING id",[JSON.stringify(game.bet_options)])).rows[0].id;
 });
 test.after(async () => pool.end());
-test('opciones editables y excepción para bingo y ruleta', () => {
+test('opciones editables y excepción para ruleta', () => {
   assert.deepEqual(parseOptions('Jugador\nBanca\nEmpate'),game.bet_options);
   assert.throws(()=>parseOptions('Banca\nbanca'));
   assert.throws(()=>parseOptions(''));
-  for(const name of ['Bingo musical','Ruleta matemática']) assert.deepEqual(betOptions({...game,name}),[]);
+  for(const name of ['Ruleta matemática']) assert.deepEqual(betOptions({...game,name}),[]);
 });
 test('Mano Dorada siempre exige apuesta aunque falten opciones o lleguen como JSON de texto', () => {
   for (const options of [undefined, null, [], '', '[]', 'incorrecto', {}, [null, '']]) {
@@ -27,7 +27,7 @@ test('Mano Dorada siempre exige apuesta aunque falten opciones o lleguen como JS
     assert.throws(() => validateBet(mano, undefined, '', 12000), /monto/);
   }
   assert.deepEqual(betOptions({...game, bet_options:'["Banca","Jugador"]'}), ['Banca','Jugador']);
-  assert.deepEqual(betOptions({...game, name:'Bingo', bet_options:null}), []);
+  assert.deepEqual(betOptions({...game, name:'Bingo', bet_options:null}), ['Participar']);
 });
 test('rechaza montos y opciones inválidos o apuestas que exceden el saldo', () => {
   for (const amount of [0,99,1001,1.5,NaN]) assert.throws(()=>validateBet(game,amount,'Jugador',10000));
@@ -67,8 +67,8 @@ test('no inicia una participación antigua sin apuesta confirmada', async () => 
   await assert.rejects(() => startRound({gameId,requestIds:[id],createdBy:adminId}), /confirmar su apuesta/);
   await pool.query("UPDATE join_requests SET status='cancelled' WHERE id=$1", [id]);
 });
-test('bingo y ruleta admiten entrada sin apuesta y no guardan montos enviados', async () => {
-  for (const slug of ['bingo','ruleta']) {
+test('ruleta admite entrada sin apuesta y no guardan montos enviados', async () => {
+  for (const slug of ['ruleta']) {
     await pool.query('INSERT INTO games(name,slug) VALUES($1,$2)',[slug,slug]);
     const id=await joinGame({slug,userId,amount:99999,option:'inventada'});
     const request=(await pool.query('SELECT * FROM join_requests WHERE id=$1',[id])).rows[0];
