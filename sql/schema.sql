@@ -185,3 +185,13 @@ ALTER TABLE app_settings ADD COLUMN IF NOT EXISTS registration_open BOOLEAN NOT 
 
 ALTER TABLE games ADD COLUMN IF NOT EXISTS initial_bankroll INTEGER NOT NULL DEFAULT 30000 CHECK(initial_bankroll>=0);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
+-- A refund is recorded as a zero net game result for a complete audit trail.
+ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_amount_check;
+ALTER TABLE transactions ADD CONSTRAINT transactions_amount_check CHECK (amount <> 0 OR type = 'game_result');
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM app_migrations WHERE name='llave-dorada-fixed-stake') THEN
+  UPDATE games SET min_amount=1000,max_amount=1000,bet_options='["Participar"]'::jsonb WHERE LOWER(name) IN ('llave dorada','la llave dorada') OR slug IN ('llave-dorada','la-llave-dorada');
+  INSERT INTO app_migrations(name) VALUES('llave-dorada-fixed-stake');
+ END IF;
+END $$;

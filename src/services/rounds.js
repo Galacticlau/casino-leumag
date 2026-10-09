@@ -1,5 +1,5 @@
 const { pool } = require('../db');
-const { betOptions, validateBet } = require('./bets');
+const { betOptions, validateBet, isGoldenKey } = require('./bets');
 const { validateAmount } = require('./ledger');
 
 function normalizeRequestIds(rawIds) {
@@ -120,7 +120,7 @@ async function completeRound({ gameId, roundId, results, createdBy }) {
   try {
     await client.query('BEGIN');
     const roundResult = await client.query(
-      `SELECT gr.id, g.min_amount, g.max_amount
+      `SELECT gr.id, g.name, g.slug, g.min_amount, g.max_amount
        FROM game_rounds gr JOIN games g ON g.id = gr.game_id
        WHERE gr.id = $1 AND gr.game_id = $2 AND gr.status = 'active'
        FOR UPDATE`,
@@ -148,14 +148,16 @@ async function completeRound({ gameId, roundId, results, createdBy }) {
       if (!Number.isSafeInteger(requestId) || resultByRequest.has(requestId)) {
         throw new Error('Los resultados contienen participantes repetidos o inválidos.');
       }
-      if (!['win', 'loss'].includes(item.outcome)) throw new Error('Selecciona si cada participante ganó o perdió.');
+      if (!(isGoldenKey(round) ? ['win', 'refund', 'loss'] : ['win', 'loss']).includes(item.outcome)) throw new Error('Selecciona si cada participante ganó o perdió.');
       const direction = item.outcome === 'loss' ? -1 : 1;
       const participant = participants.find((p) => Number(p.request_id) === requestId);
       const rawAmount = item.outcome === 'loss' && participant?.bet_amount ? participant.bet_amount : item.amount;
-      const amount = participant?.bet_amount && item.outcome === 'loss'
+      const amount = isGoldenKey(round)
+        ? ({ win: 15000, refund: 0, loss: -500 })[item.outcome]
+        : participant?.bet_amount && item.outcome === 'loss'
         ? -Number(participant.bet_amount)
         : validateAmount(direction * Math.abs(Number(rawAmount)), round.min_amount, round.max_amount);
-      resultByRequest.set(requestId, { amount, note: String(item.note || '').trim().slice(0, 180) });
+      resultByRequest.set(requestId, { amount, note: isGoldenKey(round) ? ({win:'Ganó $15.000',refund:'Devolución de apuesta: saldo sin cambios',loss:'Pérdida parcial de $500'})[item.outcome] : String(item.note || '').trim().slice(0, 180) });
     }
     if (resultByRequest.size !== participants.length
       || participants.some((item) => !resultByRequest.has(Number(item.request_id)))) {

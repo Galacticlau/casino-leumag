@@ -1,6 +1,7 @@
 (() => {
   const app = document.querySelector('#queue-app');
   if (!app) return;
+  const goldenKey = app.dataset.goldenKey === 'true';
   const gameId = app.dataset.gameId;
   const minimum = Number(app.dataset.min);
   const maximum = Number(app.dataset.max);
@@ -47,8 +48,9 @@
     group.setAttribute('aria-label', 'Resultado del participante');
     const input = hidden('', '');
     input.className = 'round-outcome';
-    const buttons = ['win', 'loss'].map((value) => {
-      const button = element('button', `outcome-button outcome-${value}`, value === 'win' ? '↑ Ganó' : '↓ Perdió');
+    const outcomes = goldenKey ? ['win', 'refund', 'loss'] : ['win', 'loss'];
+    const buttons = outcomes.map((value) => {
+      const button = element('button', `outcome-button outcome-${value}`, goldenKey ? ({win:'Ganó $15.000',refund:'Devolver $1.000',loss:'Perdió $500'})[value] : value === 'win' ? '↑ Ganó' : '↓ Perdió');
       button.type = 'button';
       button.setAttribute('aria-pressed', 'false');
       button.addEventListener('click', () => { input.value = value; input.dispatchEvent(new Event('change')); });
@@ -56,7 +58,7 @@
       return button;
     });
     input.addEventListener('change', () => buttons.forEach((button, index) => {
-      button.setAttribute('aria-pressed', String(input.value === ['win', 'loss'][index]));
+      button.setAttribute('aria-pressed', String(input.value === outcomes[index]));
     }));
     group.append(input);
     return group;
@@ -139,9 +141,14 @@
         amountLabel.append(element('small', '', 'Si perdió, se descuenta exactamente su apuesta. Si ganó, indica la ganancia sin incluir la devolución de la apuesta.'));
       }
       amountLabel.hidden = true;
+      if (goldenKey) {
+        amount.required = false;
+        amount.disabled = true;
+        amountLabel.append(element('small', '', 'El monto se calcula automáticamente según el resultado.'));
+      }
       outcome.querySelector('input').addEventListener('change', () => {
         const result = outcome.querySelector('input').value;
-        amountLabel.hidden = result !== 'win' && Boolean(item.bet_amount);
+        amountLabel.hidden = goldenKey || (result !== 'win' && Boolean(item.bet_amount));
       });
       fields.append(outcomeLabel, amountLabel);
       card.append(fields);

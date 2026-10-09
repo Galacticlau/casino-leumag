@@ -1,5 +1,9 @@
 const { pool } = require('../db');
+function isGoldenKey(game) {
+  return /(?:^|\s|-)llave(?:\s|-)dorada(?:$|\s|-)/.test(`${game.name || ''} ${game.slug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
+}
 function betOptions(game) {
+  if (isGoldenKey(game)) return ['Participar'];
   const name = `${game.name || ''} ${game.slug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   if (/bingo|ruleta/.test(name)) return [];
   let options = game.bet_options;
@@ -21,7 +25,8 @@ function validateBet(game, amount, option, balance) {
   const options = betOptions(game);
   if (!options.length) return { amount: null, option: null };
   const stake = Number(amount);
-  if (!Number.isSafeInteger(stake) || stake < Number(game.min_amount) || stake > Number(game.max_amount)) throw new Error('Selecciona un monto de apuesta dentro del rango del juego.');
+  if (isGoldenKey(game) && stake !== 1000) throw new Error('La llave dorada tiene una apuesta fija de $1.000.');
+  if (!Number.isSafeInteger(stake) || (!isGoldenKey(game) && (stake < Number(game.min_amount) || stake > Number(game.max_amount)))) throw new Error('Selecciona un monto de apuesta dentro del rango del juego.');
   if (stake > Number(balance)) throw new Error('No tienes saldo suficiente para esa apuesta.');
   if (!options.includes(option)) throw new Error('Selecciona una de las opciones de este juego.');
   return { amount: stake, option };
@@ -53,4 +58,4 @@ async function joinGame({ slug, userId, amount, option }) {
   } catch (error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); }
 }
-module.exports = { betOptions, parseOptions, validateBet, joinGame };
+module.exports = { isGoldenKey, betOptions, parseOptions, validateBet, joinGame };
