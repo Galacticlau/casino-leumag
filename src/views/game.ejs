@@ -1,6 +1,9 @@
 <% const rouletteGame = /ruleta/i.test(`${game.name} ${game.slug}`); if (rouletteGame) { game.min_amount = 100; game.max_amount = 1500; } %>
 <% const goldenKey = /llave[ -]magica/.test(`${game.name} ${game.slug}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()); if (goldenKey) { game.min_amount = 1000; game.max_amount = 1000; } %>
 <%- include('partials/header') %>
+<% if (rouletteGame) { %>
+<%- include('partials/player-roulette') %>
+<% } else { %>
 <section class="narrow-panel panel game-join">
   <span class="eyebrow">Puesto de juego</span>
   <h1><%= game.name %></h1>
@@ -44,6 +47,7 @@
   </form>
   <p class="help">Tu nombre aparecerá en el notebook del puesto. El encargado registrará el resultado.</p>
 </section>
+<% } %>
 <script src="/roulette-rules.js" defer></script>
 <script src="/player-roulette.js" defer></script>
 <script src="/player-bet.js" defer></script>

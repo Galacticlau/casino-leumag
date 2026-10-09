@@ -1,7 +1,7 @@
 (() => {
   const form = document.querySelector('#bet-form');
   const input = form?.querySelector('#bet-amount');
-  if (!input) return;
+  if (!input || form.dataset.mobileRoulette === 'true') return;
   const chips = [...form.querySelectorAll('[data-bet-amount]')];
   const summary = form.querySelector('#bet-summary');
   const format = (value) => new Intl.NumberFormat('es-CL').format(value);
