@@ -1,6 +1,5 @@
-<div class="game-finances" aria-live="polite">
-  <div><span>Caja inicial</span><strong data-finance="initial_bankroll">$<%= formatNumber(game.initial_bankroll) %></strong></div>
-  <div><span>Monto actual de la mesa</span><strong data-finance="table_balance">$<%= formatNumber(game.table_balance) %></strong></div>
-  <div><span>Ganancias de la mesa</span><strong data-finance="gains">$<%= formatNumber(game.gains) %></strong></div>
-  <div><span>Pérdidas de la mesa</span><strong data-finance="losses">$<%= formatNumber(game.losses) %></strong></div>
+<div class="game-finances manager-finances" aria-live="polite">
+  <div class="manager-balance"><span>Saldo actual del juego</span><strong data-finance="table_balance">$<%= formatNumber(game.table_balance) %></strong></div>
+  <div class="manager-gains"><span>Ganancias</span><strong data-finance="gains">$<%= formatNumber(game.gains) %></strong></div>
+  <div class="manager-losses"><span>Pérdidas</span><strong data-finance="losses">$<%= formatNumber(game.losses) %></strong></div>
 </div>
