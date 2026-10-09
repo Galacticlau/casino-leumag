@@ -190,8 +190,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_amount_check;
 ALTER TABLE transactions ADD CONSTRAINT transactions_amount_check CHECK (amount <> 0 OR type = 'game_result');
 DO $$ BEGIN
- IF NOT EXISTS (SELECT 1 FROM app_migrations WHERE name='llave-dorada-fixed-stake') THEN
-  UPDATE games SET min_amount=1000,max_amount=1000,bet_options='["Participar"]'::jsonb WHERE LOWER(name) IN ('llave dorada','la llave dorada') OR slug IN ('llave-dorada','la-llave-dorada');
-  INSERT INTO app_migrations(name) VALUES('llave-dorada-fixed-stake');
+ IF NOT EXISTS (SELECT 1 FROM app_migrations WHERE name='llave-magica-fixed-stake') THEN
+  UPDATE games SET min_amount=1000,max_amount=1000,bet_options='["Participar"]'::jsonb WHERE LOWER(TRIM(name)) IN ('llave mágica','la llave mágica','llave magica','la llave magica') OR slug IN ('llave-magica','la-llave-magica');
+  INSERT INTO app_migrations(name) VALUES('llave-magica-fixed-stake');
  END IF;
 END $$;

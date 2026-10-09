@@ -1,4 +1,4 @@
-<% const goldenKey = /llave[ -]dorada/.test(`${game.name} ${game.slug}`.toLowerCase()); if (goldenKey) { game.min_amount = 1000; game.max_amount = 1000; } %>
+<% const goldenKey = /llave[ -]magica/.test(`${game.name} ${game.slug}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()); if (goldenKey) { game.min_amount = 1000; game.max_amount = 1000; } %>
 <%- include('partials/header') %>
 <section class="narrow-panel panel game-join">
   <span class="eyebrow">Puesto de juego</span>
