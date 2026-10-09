@@ -4,13 +4,13 @@
   <form method="post" action="/game/<%= game.slug %>/join" id="bet-form" class="form-stack" data-mobile-roulette="true" data-balance="<%= balance %>">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="hidden" name="betOption" id="roulette-bet-option">
-    <fieldset class="bet-fieldset"><legend>1. Monto de tu apuesta</legend>
+    <fieldset class="bet-fieldset"><legend>1. Tipo de apuesta</legend><div id="roulette-types" class="roulette-type-grid" role="group" aria-label="Tipos de apuesta"></div></fieldset>
+    <fieldset class="bet-fieldset"><legend>2. Elige tu jugada</legend><p class="help" id="roulette-selection-help">Selecciona primero un tipo de apuesta.</p><div id="roulette-options" class="roulette-option-grid" role="group" aria-label="Jugadas disponibles"></div></fieldset>
+    <fieldset class="bet-fieldset"><legend>3. Monto de tu apuesta</legend>
       <label for="bet-amount">Monto en Leumag Coin</label><input type="number" name="betAmount" id="bet-amount" min="100" max="<%= Math.min(1500,balance) %>" step="1" value="100" inputmode="numeric" required>
       <div class="chip-buttons roulette-chips"><% [100,200,500,800,1000,1500].forEach(amount => { %><button type="button" class="chip-button" data-bet-amount="<%= amount %>" <%= amount>balance?'disabled':'' %>>$<%= formatNumber(amount) %></button><% }) %></div>
       <p class="help" id="roulette-limit">Mínimo $100 · máximo $1.500 · pleno hasta $800.</p>
     </fieldset>
-    <fieldset class="bet-fieldset"><legend>2. Tipo de apuesta</legend><div id="roulette-types" class="roulette-type-grid" role="group" aria-label="Tipos de apuesta"></div></fieldset>
-    <fieldset class="bet-fieldset"><legend>3. Elige tu jugada</legend><p class="help" id="roulette-selection-help">Selecciona primero un tipo de apuesta.</p><div id="roulette-options" class="roulette-option-grid" role="group" aria-label="Jugadas disponibles"></div></fieldset>
     <div class="roulette-bet-review" id="bet-summary" aria-live="polite">Elige un tipo de apuesta y tu jugada.</div>
     <button class="button button-primary button-wide button-large" id="roulette-confirm" type="submit" disabled>Confirmar apuesta y entrar a la fila</button>
     <p class="help">Mira la ruleta real para conocer el resultado. Tu saldo se actualiza cuando el encargado cierra la ronda. Para cambiar tu apuesta, cancela la espera y vuelve a entrar.</p>
