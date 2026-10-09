@@ -377,3 +377,27 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:3px solid
 .roulette-round-summary { padding:16px; margin:20px 0 14px; color:#d4dfd1; border:1px solid #b3994d45; border-radius:12px; background:#04170f; line-height:1.6; }
 @media(max-width:1100px) { .roulette-panel .roulette-numbers { grid-template-columns:repeat(6,minmax(0,1fr)); } }
 @media(max-width:600px) { .roulette-panel .roulette-result { padding:14px; } .roulette-panel .roulette-number { min-height:44px; } .roulette-panel .roulette-player-card { padding:14px; } }
+
+/* Player-only visual refresh; betting and settlement behavior stays unchanged. */
+.player-ui { background:radial-gradient(ellipse at 85% 5%,#17523b 0,transparent 45%),radial-gradient(ellipse at 0 70%,#302214 0,transparent 45%),#05150f; }
+.player-ui .site-header { background:#03150ef2; border-bottom:1px solid #ceb46b70; box-shadow:0 5px 25px #0005; }
+.player-ui .brand { color:#f1d58f; }
+.player-ui .site-header nav { gap:18px; }
+.player-ui .site-header .link-button { padding:8px 14px; border:1px solid #bd9b4a70; border-radius:10px; color:#efd89b; background:#133023; }
+.player-ui .page-shell::before { content:"¡Bienvenido al casino!"; display:flex; align-items:center; min-height:190px; padding:28px 230px 28px 28px; margin-bottom:26px; border:1px solid #d6b45d55; border-radius:24px; color:#efd69a; font:bold clamp(1.5rem,4vw,2.5rem)/1.2 Georgia,serif; background:url('/images/mascota-casino.webp') right 24px center / auto 185px no-repeat,radial-gradient(ellipse at right,#27674880,transparent 60%),linear-gradient(135deg,#123e2b,#071f16); box-shadow:0 18px 40px #0005,inset 0 1px #f3d98a20; }
+.player-ui .panel,.player-ui .roulette-join { border-color:#b99a4b65; box-shadow:0 16px 36px #0005,inset 0 1px #e7c8751a; }
+.player-ui .balance-card,.player-ui .roulette-wallet { background:linear-gradient(145deg,#194933,#08271b); border:1px solid #d6b86b70; box-shadow:0 8px 25px #0004; }
+.player-ui .balance-card strong,.player-ui .roulette-wallet strong { color:#f5d991; text-shadow:0 2px 14px #d3a84d20; }
+.player-ui .button-primary { background:linear-gradient(135deg,#ffedbc,#d3a753); border:1px solid #f5d68e; min-height:52px; }
+.player-ui .chip-button { border-color:#bda05e75; }
+.player-ui .table-wrap { border-radius:14px; border:1px solid #b99a4b40; }
+.player-ui tbody tr:nth-child(even) { background:#a5b99807; }
+@media(max-width:600px) {
+ .player-ui .site-header { padding:14px 16px; gap:12px; }
+ .player-ui .brand { font-size:1.2rem; }
+ .player-ui .site-header nav { gap:10px; font-size:.9rem; }
+ .player-ui .page-shell { padding-top:18px; }
+ .player-ui .page-shell::before { min-height:145px; padding:18px 130px 18px 18px; margin-bottom:18px; border-radius:18px; background-position:right 6px center,center,center; background-size:auto 138px,auto,auto; font-size:1.55rem; }
+ .player-ui .balance-card { width:100%; }
+ .player-ui .dashboard-head h1 { font-size:1.8rem; }
+}

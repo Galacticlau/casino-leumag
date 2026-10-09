@@ -231,18 +231,20 @@ app.post('/login', loginLimiter, asyncRoute(async (req, res) => {
     id: Number(user.id), username: user.username, displayName: user.display_name,
     role: user.role, mustChangePassword: user.must_change_password
   };
-  const destination = user.must_change_password ? '/account/password' : (req.session.returnTo || redirectByRole(user));
-  if (!user.must_change_password) delete req.session.returnTo;
+  const destination = user.role !== 'player' && user.must_change_password ? '/account/password' : (req.session.returnTo || redirectByRole(user));
+  if (user.role === 'player' || !user.must_change_password) delete req.session.returnTo;
   return req.session.save(() => res.redirect(destination));
 }));
 
 app.post('/logout', requireLogin, (req, res) => req.session.destroy(() => res.redirect('/login')));
 
 app.get('/account/password', requireLogin, (req, res) => {
+  if (req.session.user.role === 'player') return res.redirect('/player');
   res.render('password', { title: 'Cambiar clave' });
 });
 
 app.post('/account/password', requireLogin, asyncRoute(async (req, res) => {
+  if (req.session.user.role === 'player') return res.status(403).render('error', { title: 'Acceso restringido', message: 'La administración gestiona las claves de los jugadores.' });
   const current = String(req.body.currentPassword || '');
   const password = String(req.body.newPassword || '');
   const confirmation = String(req.body.confirmation || '');

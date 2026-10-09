@@ -6,7 +6,7 @@
   <title><%= title %> · Casino Escolar</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
+<body class="<%= currentUser && currentUser.role === 'player' ? 'player-ui' : '' %>">
   <header class="site-header">
     <a class="brand" href="/">♠ Casino Escolar</a>
     <% if (currentUser) { %>
@@ -17,7 +17,7 @@
           <a href="/super">Administración</a>
           <a href="/admin">Operar mesa</a>
         <% } %>
-        <a href="/account/password">Cambiar clave</a>
+        <% if (currentUser.role !== 'player') { %><a href="/account/password">Cambiar clave</a><% } %>
         <form method="post" action="/logout" class="inline-form">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button class="link-button" type="submit">Salir</button>
