@@ -488,7 +488,7 @@ app.post('/super/users', requireRole('superadmin'), asyncRoute(async (req, res) 
     return res.redirect('/super/users');
   }
   const settings = await getSettings();
-  const startingBalance = role === 'player' ? settings.initial_balance : 0;
+  const startingBalance = ['player', 'game_admin'].includes(role) ? 10000 : 0;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
