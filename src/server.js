@@ -268,7 +268,7 @@ app.post('/account/password', requireLogin, asyncRoute(async (req, res) => {
 
 // ---------- Jugadores ----------
 
-app.get('/player', requireRole('player'), asyncRoute(async (req, res) => {
+app.get('/player', requireRole('player', 'game_admin'), asyncRoute(async (req, res) => {
   const [userResult, transactionsResult, settings] = await Promise.all([
     pool.query('SELECT id, display_name, username, balance FROM users WHERE id = $1', [req.session.user.id]),
     pool.query(
@@ -286,13 +286,14 @@ app.get('/player', requireRole('player'), asyncRoute(async (req, res) => {
   });
 }));
 
-app.post('/player/profile', requireRole('player'), (req, res) => {
+app.post('/player/profile', requireRole('player', 'game_admin'), (req, res) => {
   res.status(403).render('error', { title: 'Datos administrados', message: 'Solo la administración puede modificar el nombre y el usuario de tu cuenta.' });
 });
 
-app.get('/game/:slug', requireRole('player'), asyncRoute(async (req, res) => {
+app.get('/game/:slug', requireRole('player', 'game_admin'), asyncRoute(async (req, res) => {
   const gameResult = await pool.query('SELECT * FROM games WHERE slug = $1 AND active = TRUE', [req.params.slug]);
   if (!gameResult.rowCount) return res.status(404).render('error', { title: 'Juego no disponible', message: 'El QR no corresponde a un juego activo.' });
+  if (req.session.user.role === 'game_admin' && (await pool.query('SELECT 1 FROM game_admins WHERE user_id=$1 AND game_id=$2', [req.session.user.id, gameResult.rows[0].id])).rowCount) return res.status(403).render('error', { title: 'Tu mesa', message: 'Puedes jugar en otras mesas, pero no en los juegos que tienes asignados.' });
   const [userResult, settings] = await Promise.all([
     pool.query('SELECT balance FROM users WHERE id = $1', [req.session.user.id]),
     getSettings()
@@ -300,7 +301,7 @@ app.get('/game/:slug', requireRole('player'), asyncRoute(async (req, res) => {
   res.render('game', { title: gameResult.rows[0].name, game: gameResult.rows[0], balance: userResult.rows[0].balance, settings, betOptions: betOptions(gameResult.rows[0]) });
 }));
 
-app.post('/game/:slug/join', requireRole('player'), asyncRoute(async (req, res) => {
+app.post('/game/:slug/join', requireRole('player', 'game_admin'), asyncRoute(async (req, res) => {
   try {
     const id = await joinGame({ slug: req.params.slug, userId: req.session.user.id, amount: req.body.betAmount, option: req.body.betOption });
     return res.redirect(`/player/wait/${id}`);
@@ -310,7 +311,7 @@ app.post('/game/:slug/join', requireRole('player'), asyncRoute(async (req, res) 
   }
 }));
 
-app.get('/player/wait/:id', requireRole('player'), asyncRoute(async (req, res) => {
+app.get('/player/wait/:id', requireRole('player', 'game_admin'), asyncRoute(async (req, res) => {
   const result = await pool.query(
     `SELECT r.*, g.name AS game_name, u.balance
      FROM join_requests r JOIN games g ON g.id = r.game_id JOIN users u ON u.id = r.user_id
@@ -322,7 +323,7 @@ app.get('/player/wait/:id', requireRole('player'), asyncRoute(async (req, res) =
   res.render('wait', { title: 'Esperando resultado', joinRequest: result.rows[0], settings });
 }));
 
-app.get('/api/player/request/:id', requireRole('player'), asyncRoute(async (req, res) => {
+app.get('/api/player/request/:id', requireRole('player', 'game_admin'), asyncRoute(async (req, res) => {
   const result = await pool.query(
     `SELECT r.status, r.transaction_id, u.balance, t.amount
      FROM join_requests r JOIN users u ON u.id = r.user_id
@@ -334,7 +335,7 @@ app.get('/api/player/request/:id', requireRole('player'), asyncRoute(async (req,
   res.json(result.rows[0]);
 }));
 
-app.post('/player/request/:id/cancel', requireRole('player'), asyncRoute(async (req, res) => {
+app.post('/player/request/:id/cancel', requireRole('player', 'game_admin'), asyncRoute(async (req, res) => {
   await pool.query(
     `UPDATE join_requests SET status = 'cancelled' WHERE id = $1 AND user_id = $2 AND status = 'pending'`,
     [req.params.id, req.session.user.id]

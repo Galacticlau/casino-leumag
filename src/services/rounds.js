@@ -51,6 +51,10 @@ async function startRound({ gameId, requestIds, createdBy }) {
       throw new Error('Uno o más participantes ya no están disponibles en la fila.');
     }
 
+    for (const participant of participantResult.rows) {
+      if ((await client.query('SELECT 1 FROM game_admins WHERE user_id=$1 AND game_id=$2', [participant.user_id, gameId])).rowCount) throw new Error('Un encargado no puede jugar en su propia mesa.');
+    }
+
     if (betOptions(game).length) {
       for (const participant of participantResult.rows) {
         if (!participant.bet_amount || !participant.bet_option) throw new Error('Un participante debe cancelar su espera y volver a entrar para confirmar su apuesta.');
@@ -190,6 +194,7 @@ async function completeRound({ gameId, roundId, results, createdBy, winningNumbe
     const transactions = [];
     for (const participant of participants) {
       if (!participant.active) throw new Error('Una de las cuentas participantes está desactivada.');
+      if ((await client.query('SELECT 1 FROM game_admins WHERE user_id=$1 AND game_id=$2', [participant.user_id, gameId])).rowCount) throw new Error('Un encargado no puede jugar en su propia mesa.');
       const result = resultByRequest.get(Number(participant.request_id));
       const balanceBefore = Number(participant.balance);
       const balanceAfter = balanceBefore + result.amount;

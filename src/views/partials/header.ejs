@@ -12,7 +12,7 @@
     <% if (currentUser) { %>
       <nav aria-label="Navegación principal">
         <% if (currentUser.role === 'player') { %><a href="/player">Mi cuenta</a><% } %>
-        <% if (currentUser.role === 'game_admin') { %><a href="/admin">Mis juegos</a><% } %>
+        <% if (currentUser.role === 'game_admin') { %><a href="/admin">Mis juegos</a><a href="/player">Jugar · Mi saldo</a><% } %>
         <% if (currentUser.role === 'superadmin') { %>
           <a href="/super">Administración</a>
           <a href="/admin">Operar mesa</a>

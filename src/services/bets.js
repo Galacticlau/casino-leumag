@@ -48,9 +48,11 @@ async function joinGame({ slug, userId, amount, option }) {
     const gameResult = await client.query('SELECT * FROM games WHERE slug = $1 AND active = TRUE FOR SHARE', [slug]);
     const game = gameResult.rows[0];
     if (!game) throw new Error('El juego no está disponible.');
-    const userResult = await client.query('SELECT balance, active FROM users WHERE id = $1 FOR UPDATE', [userId]);
+    const userResult = await client.query('SELECT balance, active, role FROM users WHERE id = $1 FOR UPDATE', [userId]);
     const user = userResult.rows[0];
     if (!user?.active) throw new Error('La cuenta no está activa.');
+    if (!['player', 'game_admin'].includes(user.role)) throw new Error('Esta cuenta no puede participar como jugador.');
+    if ((await client.query('SELECT 1 FROM game_admins WHERE user_id=$1 AND game_id=$2', [userId, game.id])).rowCount) throw new Error('Puedes jugar en otras mesas, pero no en los juegos que tienes asignados.');
     await client.query("UPDATE join_requests SET status = 'expired' WHERE user_id = $1 AND status = 'pending' AND expires_at <= NOW()", [userId]);
     const existing = await client.query("SELECT id, game_id FROM join_requests WHERE user_id = $1 AND status IN ('pending', 'playing')", [userId]);
     if (existing.rowCount) {
