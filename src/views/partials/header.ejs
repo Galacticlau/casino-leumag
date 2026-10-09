@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %> · Casino Escolar</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=casino-mascota-20261009-2">
 </head>
 <body class="<%= currentUser && currentUser.role === 'player' ? 'player-ui' : '' %>">
   <header class="site-header">
@@ -26,6 +26,17 @@
     <% } %>
   </header>
   <main class="page-shell">
+    <% if (currentUser && currentUser.role === 'player') { %>
+      <section class="player-welcome" aria-label="Bienvenida al casino">
+        <div class="player-welcome-copy">
+          <span class="player-welcome-kicker">Casino Escolar · Leumag</span>
+          <h2>¡Que empiece el juego!</h2>
+          <p>Escanea el QR de tu mesa, elige tu apuesta y disfruta la ronda.</p>
+          <div class="player-welcome-suits" aria-hidden="true"><span>♠</span><span>♥</span><span>♣</span><span>♦</span></div>
+        </div>
+        <img class="player-mascot" src="/images/mascota-casino.webp?v=2" alt="Mascota Leumag con sombrero de casino y cartas" width="220" height="210" fetchpriority="high">
+      </section>
+    <% } %>
     <% if (flash) { %>
       <div class="flash flash-<%= flash.type %>" role="status"><%= flash.message %></div>
     <% } %>
