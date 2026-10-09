@@ -9,9 +9,6 @@
   <div class="live-pill"><span></span> Actualización automática</div>
 </section>
 
-<%- include('partials/table-finance', { game }) %>
-<p class="muted">Las ganancias y pérdidas corresponden a la mesa y a resultados registrados. Moneda ficticia.</p>
-
 <section id="queue-app"
   data-game-id="<%= game.id %>"
   data-min="<%= game.min_amount %>"
@@ -24,6 +21,10 @@
   <div id="waiting-queue"><div class="empty-state">Buscando participantes…</div></div>
 </section>
 
+<details class="panel"><summary>Ver caja, ganancias y pérdidas de la mesa</summary>
+<%- include('partials/table-finance', { game }) %>
+<p class="muted">Los montos corresponden a resultados registrados de la mesa.</p>
+</details>
 <noscript><div class="notice">Activa JavaScript para ver la fila y registrar resultados rápidamente.</div></noscript>
 <script src="/admin-game.js" defer></script>
 <%- include('partials/footer') %>
