@@ -227,3 +227,18 @@ BEGIN
     INSERT INTO app_migrations(name) VALUES ('manager-balance-10000-20261009-041822');
   END IF;
 END $$;
+
+-- Repair existing zero-balance managers once; preserve balances already in use.
+DO $$
+DECLARE manager RECORD;
+BEGIN
+  PERFORM pg_advisory_xact_lock(20261009, 12228);
+  IF NOT EXISTS (SELECT 1 FROM app_migrations WHERE name = 'repair-zero-managers-20261009-042228') THEN
+    FOR manager IN SELECT id, balance FROM users WHERE role='game_admin' AND balance=0 AND archived_at IS NULL FOR UPDATE LOOP
+      INSERT INTO transactions(user_id,amount,balance_before,balance_after,type,note,created_by)
+      VALUES(manager.id,10000,0,10000,'adjustment','Saldo inicial para jugar como encargado',manager.id);
+      UPDATE users SET balance=10000,updated_at=NOW() WHERE id=manager.id;
+    END LOOP;
+    INSERT INTO app_migrations(name) VALUES('repair-zero-managers-20261009-042228');
+  END IF;
+END $$;
