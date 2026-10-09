@@ -107,18 +107,6 @@
     heading.append(title, element('span', 'badge badge-success', `${round.participants.length} participante(s)`));
     section.append(heading);
 
-    const bulk = element('div', 'bulk-result');
-    const bulkOutcomeLabel = element('div', '', 'Resultado para todos');
-    const bulkOutcome = outcomeSelect();
-    bulkOutcomeLabel.append(bulkOutcome);
-    const bulkAmountLabel = element('div', '', `Cantidad de ${currency}`);
-    const bulkAmount = amountInput();
-    bulkAmountLabel.append(amountControls(bulkAmount));
-    const apply = element('button', 'button button-secondary', 'Aplicar a todos');
-    apply.type = 'button';
-    bulk.append(bulkOutcomeLabel, bulkAmountLabel, apply);
-    section.append(bulk);
-
     const form = document.createElement('form');
     form.method = 'post';
     form.action = `/admin/game/${gameId}/rounds/${round.id}/finish`;
@@ -150,6 +138,11 @@
         card.dataset.betAmount = item.bet_amount;
         amountLabel.append(element('small', '', 'Si perdió, se descuenta exactamente su apuesta. Si ganó, indica la ganancia sin incluir la devolución de la apuesta.'));
       }
+      amountLabel.hidden = true;
+      outcome.querySelector('input').addEventListener('change', () => {
+        const result = outcome.querySelector('input').value;
+        amountLabel.hidden = result !== 'win' && Boolean(item.bet_amount);
+      });
       fields.append(outcomeLabel, amountLabel);
       card.append(fields);
       grid.append(card);
@@ -174,11 +167,6 @@
       resultsInput.value = JSON.stringify(results);
       finish.disabled = true;
       finish.textContent = 'Registrando…';
-    });
-    apply.addEventListener('click', () => {
-      if (!bulkOutcome.querySelector('input').value || !bulkAmount.checkValidity()) { window.alert('Selecciona un resultado y un monto válido para todos.'); return; }
-      form.querySelectorAll('.round-outcome').forEach((field) => { field.value = bulkOutcome.querySelector('input').value; field.dispatchEvent(new Event('change')); });
-      form.querySelectorAll('.round-amount').forEach((field) => { if (!field.readOnly) field.value = bulkAmount.value; field.dispatchEvent(new Event('input')); });
     });
     section.append(form);
 
@@ -262,6 +250,8 @@
       });
       if (!response.ok) throw new Error('No se pudo actualizar');
       const data = await response.json();
+      queueRoot.hidden = Boolean(data.activeRound);
+      document.querySelector('.queue-section-title').hidden = Boolean(data.activeRound);
       if (data.finance) {
         document.querySelectorAll('[data-finance]').forEach((element) => {
           element.textContent = '$' + Number(data.finance[element.dataset.finance]).toLocaleString('es-CL');
