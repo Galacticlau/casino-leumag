@@ -217,3 +217,13 @@ BEGIN
     INSERT INTO app_migrations(name) VALUES ('event-reset-20261009-041157');
   END IF;
 END $$;
+
+-- Set game managers' playing balance once, as requested.
+DO $$
+BEGIN
+  PERFORM pg_advisory_xact_lock(20261009, 11822);
+  IF NOT EXISTS (SELECT 1 FROM app_migrations WHERE name = 'manager-balance-10000-20261009-041822') THEN
+    UPDATE users SET balance = 10000, updated_at = NOW() WHERE role = 'game_admin';
+    INSERT INTO app_migrations(name) VALUES ('manager-balance-10000-20261009-041822');
+  END IF;
+END $$;
