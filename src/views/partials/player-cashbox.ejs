@@ -1,0 +1,12 @@
+<section class="panel narrow-panel cashbox-join">
+ <span class="eyebrow">Caja · Canje de Leumag Coin</span>
+ <div class="cashbox-gift" aria-hidden="true">🎁</div>
+ <h1>¡Llévate increíbles premios!</h1>
+ <p>¡Tus Leumag Coin tienen premio! Acércate a Caja, elige lo que más te guste y canjea tus monedas.</p>
+ <div class="roulette-wallet"><span>Disponible para canjear</span><strong>$<%= formatNumber(balance) %></strong><small><%= settings.currency_name %></small></div>
+ <form method="post" action="/game/<%= game.slug %>/join">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <button class="button button-primary button-wide button-large" type="submit">🎁 ¡Quiero mi premio!</button>
+ </form>
+ <p class="help">El encargado descontará solo el valor del premio que elijas. Revisa los premios disponibles y sus valores en el puesto.</p>
+</section>

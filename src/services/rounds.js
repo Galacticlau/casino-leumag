@@ -1,6 +1,6 @@
 const { isRoulette, settle } = require('../public/roulette-rules');
 const { pool } = require('../db');
-const { betOptions, validateBet, isGoldenKey, isBingo } = require('./bets');
+const { betOptions, validateBet, isGoldenKey, isBingo, isCashbox } = require('./bets');
 const { validateAmount } = require('./ledger');
 
 function normalizeRequestIds(rawIds) {
@@ -148,6 +148,14 @@ async function completeRound({ gameId, roundId, results, createdBy, winningNumbe
       const requestId = Number(item.requestId);
       if (!Number.isSafeInteger(requestId) || resultByRequest.has(requestId)) {
         throw new Error('Los resultados contienen participantes repetidos o inválidos.');
+      }
+      if (isCashbox(round)) {
+        const cost = Number(item.amount);
+        if (!Number.isSafeInteger(cost) || cost < 1 || cost > 2147483647) throw new Error('Ingresa un valor válido para el premio.');
+        const customer = participants.find(p => Number(p.request_id) === requestId);
+        if (!customer || cost > Number(customer.balance)) throw new Error('El saldo no alcanza para canjear este premio.');
+        resultByRequest.set(requestId, { amount: -cost, note: `Canje de premio: ${String(item.note || 'Premio').trim().slice(0,120)}` });
+        continue;
       }
       if (isRoulette(round)) {
         const participant = participants.find(p => Number(p.request_id) === requestId);

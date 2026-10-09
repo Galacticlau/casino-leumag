@@ -1,14 +1,15 @@
+<% const cashbox = /^caja$/i.test(String(joinRequest.game_name).trim()); %>
 <%- include('partials/header') %>
-<section class="narrow-panel panel wait-card" data-wait-request="<%= joinRequest.id %>" data-initial-status="<%= joinRequest.status %>">
+<section class="narrow-panel panel wait-card" data-wait-request="<%= joinRequest.id %>" data-cashbox="<%= cashbox %>" data-initial-status="<%= joinRequest.status %>">
   <div class="spinner" aria-hidden="true"></div>
-  <span class="eyebrow">Participación enviada</span>
+  <span class="eyebrow"><%= cashbox ? '¡Tu premio te espera!' : 'Participación enviada' %></span>
   <h1><%= joinRequest.game_name %></h1>
   <% if (joinRequest.status === 'pending') { %>
-    <p id="wait-message" aria-live="polite">Estás en la fila. Espera a que el encargado inicie tu ronda.</p>
+    <p id="wait-message" aria-live="polite"><%= cashbox ? 'Estás en la fila de premios. Elige tu favorito mientras esperas.' : 'Estás en la fila. Espera a que el encargado inicie tu ronda.' %></p>
   <% } else if (joinRequest.status === 'playing') { %>
-    <p id="wait-message" aria-live="polite">¡Tu ronda comenzó! Sigue las indicaciones del encargado.</p>
+    <p id="wait-message" aria-live="polite"><%= cashbox ? '¡Es tu turno! El encargado registrará el valor de tu premio.' : '¡Tu ronda comenzó! Sigue las indicaciones del encargado.' %></p>
   <% } else if (joinRequest.status === 'used') { %>
-    <p id="wait-message" aria-live="polite">Esta participación ya fue procesada.</p>
+    <p id="wait-message" aria-live="polite"><%= cashbox ? '¡Canje realizado! Disfruta tu premio.' : 'Esta participación ya fue procesada.' %></p>
   <% } else { %>
     <p id="wait-message" aria-live="polite">Esta participación ya no está activa.</p>
   <% } %>

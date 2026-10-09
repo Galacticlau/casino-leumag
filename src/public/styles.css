@@ -455,3 +455,4 @@ button:focus-visible, a:focus-visible, summary:focus-visible { outline:3px solid
   font-variant-numeric:tabular-nums;
 }
 .player-ui .balance-card::after { color:#61451612; }
+.cashbox-join{text-align:center;background:radial-gradient(circle at 50% 25%,#6f533333,transparent 60%),linear-gradient(145deg,#123e2a,#071d14);border-color:#dfb85580}.cashbox-join h1{font:700 clamp(2rem,7vw,3rem)/1.1 Georgia,serif;color:#ffe2a2}.cashbox-join>p{line-height:1.6;color:#dbe2ce}.cashbox-gift{font-size:4.5rem;margin:12px 0;filter:drop-shadow(0 6px 18px #e7c66a40)}.cashbox-join .roulette-wallet{text-align:left;margin:24px 0}.cashbox-admin .queue-card{display:grid;gap:14px}.cashbox-admin>form{margin:20px 0}

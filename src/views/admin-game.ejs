@@ -10,6 +10,7 @@
 </section>
 
 <section id="queue-app"
+  data-cashbox="<%= /^caja$/i.test(String(game.name).trim()) || /^caja$/i.test(String(game.slug).trim()) %>"
   data-roulette="<%= /ruleta/i.test(`${game.name} ${game.slug}`) %>"
   data-bingo="<%= /bingo/i.test(`${game.name} ${game.slug}`) %>"
   data-golden-key="<%= /llave[ -]magica/.test(`${game.name} ${game.slug}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()) %>"
@@ -31,5 +32,6 @@
 <noscript><div class="notice">Activa JavaScript para ver la fila y registrar resultados rápidamente.</div></noscript>
 <script src="/roulette-rules.js" defer></script>
 <script src="/admin-roulette.js" defer></script>
+<script src="/admin-cashbox.js" defer></script>
 <script src="/admin-game.js" defer></script>
 <%- include('partials/footer') %>

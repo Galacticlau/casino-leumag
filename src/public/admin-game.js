@@ -103,6 +103,7 @@
       return;
     }
 
+    if (app.dataset.cashbox === 'true') { window.renderCashboxRound({round, activeRoot, gameId, csrf}); return; }
     if (app.dataset.roulette === 'true') {
       window.renderRouletteRound({round, activeRoot, gameId, csrf});
       return;
@@ -213,7 +214,7 @@
     form.append(hidden('_csrf', csrf));
     const grid = element('div', 'queue-grid');
     const selectedCount = element('strong', 'selection-count');
-    const start = element('button', 'button button-primary button-large', 'Iniciar ronda');
+    const start = element('button', 'button button-primary button-large', app.dataset.cashbox === 'true' ? 'Atender canje' : 'Iniciar ronda');
     start.type = 'submit';
 
     function updateSelection() {

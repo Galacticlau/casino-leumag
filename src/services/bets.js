@@ -4,7 +4,9 @@ function isGoldenKey(game) {
   return /(?:^|\s|-)llave(?:\s|-)magica(?:$|\s|-)/.test(`${game.name || ''} ${game.slug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
 }
 function isBingo(game) { return /bingo/i.test(`${game.name || ''} ${game.slug || ''}`); }
+function isCashbox(game) { return /^caja$/i.test(String(game.name || '').trim()) || /^caja$/i.test(String(game.slug || '').trim()); }
 function betOptions(game) {
+  if (isCashbox(game)) return [];
   if (isBingo(game)) return ['Participar'];
   if (isGoldenKey(game)) return ['Participar'];
   const name = `${game.name || ''} ${game.slug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -66,4 +68,4 @@ async function joinGame({ slug, userId, amount, option }) {
   } catch (error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); }
 }
-module.exports = { isBingo, isGoldenKey, betOptions, parseOptions, validateBet, joinGame };
+module.exports = { isCashbox, isBingo, isGoldenKey, betOptions, parseOptions, validateBet, joinGame };

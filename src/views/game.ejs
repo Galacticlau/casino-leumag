@@ -1,7 +1,9 @@
 <% const rouletteGame = /ruleta/i.test(`${game.name} ${game.slug}`); if (rouletteGame) { game.min_amount = 100; game.max_amount = 1500; } %>
 <% const goldenKey = /llave[ -]magica/.test(`${game.name} ${game.slug}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()); if (goldenKey) { game.min_amount = 1000; game.max_amount = 1000; } %>
 <%- include('partials/header') %>
-<% if (rouletteGame) { %>
+<% if (/^caja$/i.test(String(game.name).trim()) || /^caja$/i.test(String(game.slug).trim())) { %>
+<%- include('partials/player-cashbox') %>
+<% } else if (rouletteGame) { %>
 <%- include('partials/player-roulette') %>
 <% } else { %>
 <section class="narrow-panel panel game-join">
