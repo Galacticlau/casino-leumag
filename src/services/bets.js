@@ -1,3 +1,4 @@
+const roulette = require('../public/roulette-rules');
 const { pool } = require('../db');
 function isGoldenKey(game) {
   return /(?:^|\s|-)llave(?:\s|-)magica(?:$|\s|-)/.test(`${game.name || ''} ${game.slug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
@@ -7,7 +8,7 @@ function betOptions(game) {
   if (isBingo(game)) return ['Participar'];
   if (isGoldenKey(game)) return ['Participar'];
   const name = `${game.name || ''} ${game.slug || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  if (/ruleta/.test(name)) return [];
+  if (roulette.isRoulette(game)) return roulette.bets.map(b => b.id);
   let options = game.bet_options;
   if (typeof options === 'string') {
     try { options = JSON.parse(options); } catch { options = null; }
@@ -27,6 +28,11 @@ function validateBet(game, amount, option, balance) {
   const options = betOptions(game);
   if (!options.length) return { amount: null, option: null };
   const stake = Number(amount);
+  if (roulette.isRoulette(game)) {
+    roulette.settle(option, stake, 0);
+    if (stake > Number(balance)) throw new Error('No tienes saldo suficiente para esa apuesta.');
+    return { amount: stake, option };
+  }
   if (isGoldenKey(game) && stake !== 1000) throw new Error('La llave mágica tiene una apuesta fija de $1.000.');
   if (!Number.isSafeInteger(stake) || (!isGoldenKey(game) && (stake < Number(game.min_amount) || stake > Number(game.max_amount)))) throw new Error('Selecciona un monto de apuesta dentro del rango del juego.');
   if (stake > Number(balance)) throw new Error('No tienes saldo suficiente para esa apuesta.');

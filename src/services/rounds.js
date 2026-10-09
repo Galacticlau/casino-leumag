@@ -1,3 +1,4 @@
+const { isRoulette, settle } = require('../public/roulette-rules');
 const { pool } = require('../db');
 const { betOptions, validateBet, isGoldenKey, isBingo } = require('./bets');
 const { validateAmount } = require('./ledger');
@@ -112,7 +113,7 @@ async function cancelRound({ gameId, roundId }) {
   }
 }
 
-async function completeRound({ gameId, roundId, results, createdBy }) {
+async function completeRound({ gameId, roundId, results, createdBy, winningNumber }) {
   if (!Array.isArray(results) || !results.length || results.length > 10) {
     throw new Error('Los resultados de la ronda no son válidos.');
   }
@@ -147,6 +148,15 @@ async function completeRound({ gameId, roundId, results, createdBy }) {
       const requestId = Number(item.requestId);
       if (!Number.isSafeInteger(requestId) || resultByRequest.has(requestId)) {
         throw new Error('Los resultados contienen participantes repetidos o inválidos.');
+      }
+      if (isRoulette(round)) {
+        const participant = participants.find(p => Number(p.request_id) === requestId);
+        if (!participant) throw new Error('Participante ajeno a esta ronda.');
+        const calculated = settle(participant.bet_option, participant.bet_amount, winningNumber);
+        if (calculated.stake > Number(participant.balance)) throw new Error('El saldo no alcanza para la apuesta de uno de los participantes.');
+        resultByRequest.set(requestId, { amount: calculated.net, note: `Ruleta: salió ${Number(winningNumber)} · ${calculated.bet.label} · apuesta $${calculated.stake} · pago total $${calculated.payout}` });
+        await client.query('UPDATE join_requests SET bet_amount=$1,bet_option=$2 WHERE id=$3', [calculated.stake, calculated.bet.label, requestId]);
+        continue;
       }
       if (!(isGoldenKey(round) ? ['win', 'refund', 'loss'] : ['win', 'loss']).includes(item.outcome)) throw new Error('Selecciona si cada participante ganó o perdió.');
       const direction = item.outcome === 'loss' ? -1 : 1;

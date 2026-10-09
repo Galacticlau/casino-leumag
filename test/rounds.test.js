@@ -26,7 +26,7 @@ async function insertUser(username, role, balance = 0) {
 
 async function addRequest(userId, targetGame = gameId) {
   const result = await pool.query(
-    `INSERT INTO join_requests (user_id, game_id) VALUES ($1, $2) RETURNING id`,
+    `INSERT INTO join_requests (user_id, game_id, bet_amount, bet_option) VALUES ($1, $2, 100, 'Participar') RETURNING id`,
     [userId, targetGame]
   );
   return result.rows[0].id;
@@ -36,12 +36,12 @@ test.before(async () => {
   await initializeDatabase();
   const game = await pool.query(
     `INSERT INTO games (name, slug, min_amount, max_amount, max_players, bet_options)
-     VALUES ('Ruleta de prueba grupal', 'juego-grupal', 10, 500, 10, '[]') RETURNING id`
+     VALUES ('Juego de prueba grupal', 'juego-grupal', 10, 500, 10, '[]') RETURNING id`
   );
   gameId = game.rows[0].id;
   const secondGame = await pool.query(
     `INSERT INTO games (name, slug, min_amount, max_amount, max_players, bet_options)
-     VALUES ('Ruleta de prueba segundo', 'segundo-juego', 10, 500, 2, '[]') RETURNING id`
+     VALUES ('Juego de prueba segundo', 'segundo-juego', 10, 500, 2, '[]') RETURNING id`
   );
   secondGameId = secondGame.rows[0].id;
   administratorIds = [];
@@ -143,7 +143,6 @@ test('un segundo cierre no duplica transacciones', async () => {
 });
 
 test('un error de saldo revierte todos los resultados de la ronda', async () => {
-  await pool.query('UPDATE users SET balance = 20 WHERE id = $1', [playerIds[0]]);
   const firstRequest = await addRequest(playerIds[0]);
   const secondRequest = await addRequest(playerIds[1]);
   const round = await startRound({
@@ -151,6 +150,7 @@ test('un error de saldo revierte todos los resultados de la ronda', async () => 
     requestIds: [firstRequest, secondRequest],
     createdBy: administratorIds[0]
   });
+  await pool.query('UPDATE users SET balance = 20 WHERE id = $1', [playerIds[0]]);
   const beforeSecond = await pool.query('SELECT balance FROM users WHERE id = $1', [playerIds[1]]);
   await assert.rejects(
     () => completeRound({

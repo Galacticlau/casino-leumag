@@ -1,3 +1,4 @@
+<% const rouletteGame = /ruleta/i.test(`${game.name} ${game.slug}`); if (rouletteGame) { game.min_amount = 100; game.max_amount = 1500; } %>
 <% const goldenKey = /llave[ -]magica/.test(`${game.name} ${game.slug}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()); if (goldenKey) { game.min_amount = 1000; game.max_amount = 1000; } %>
 <%- include('partials/header') %>
 <section class="narrow-panel panel game-join">
@@ -15,11 +16,15 @@
     <% if (options.length) { %>
       <fieldset class="bet-fieldset">
         <legend>1. Elige tu apuesta</legend>
+        <% if (rouletteGame) { %>
+          <label>Tipo y selección<select name="betOption" id="roulette-bet-option" required><option value="">Selecciona tu apuesta</option></select></label>
+        <% } else { %>
         <div class="bet-option-grid">
           <% options.forEach((option, index) => { %>
             <label class="bet-choice"><input type="radio" name="betOption" value="<%= option %>" required <%= goldenKey ? 'checked' : '' %>><span><%= option %></span></label>
           <% }) %>
         </div>
+        <% } %>
       </fieldset>
       <fieldset class="bet-fieldset">
         <legend>2. Elige cuánto apostar</legend>
@@ -32,12 +37,14 @@
         <label><%= goldenKey ? 'Apuesta fija' : 'Otro monto' %><input type="number" name="betAmount" id="bet-amount" value="<%= goldenKey ? 1000 : '' %>" <%= goldenKey ? 'readonly' : '' %> min="<%= game.min_amount %>" max="<%= Math.min(game.max_amount, balance) %>" inputmode="numeric" required placeholder="Ingresa un monto"></label>
       </fieldset>
       <p class="bet-summary" id="bet-summary" aria-live="polite">Elige una opción y un monto.</p>
-      <p class="help">La apuesta se confirma antes de iniciar la ronda. <%= goldenKey ? 'Resultados posibles: ganar $15.000, devolución completa (saldo sin cambios) o perder solo $500.' : /bingo/i.test(`${game.name} ${game.slug}`) ? 'Si pierdes, pierdes tu apuesta. Si ganas, recibes el triple en total: tu apuesta más el doble como ganancia neta.' : 'Si pierdes, se descuenta ese monto; si ganas, la encargada registra tu ganancia.' %> El saldo cambia al cerrar la ronda. Para cambiar tu apuesta, cancela la espera y vuelve a entrar.</p>
+      <p class="help">La apuesta se confirma antes de iniciar la ronda. <%= goldenKey ? 'Resultados posibles: ganar $15.000, devolución completa (saldo sin cambios) o perder solo $500.' : rouletteGame ? 'Una apuesta por persona. Máximo $800 para pleno y $1.500 para las demás. El pago total incluye la apuesta; el saldo se ajusta al cerrar la ronda.' : /bingo/i.test(`${game.name} ${game.slug}`) ? 'Si pierdes, pierdes tu apuesta. Si ganas, recibes el triple en total: tu apuesta más el doble como ganancia neta.' : 'Si pierdes, se descuenta ese monto; si ganas, la encargada registra tu ganancia.' %> El saldo cambia al cerrar la ronda. Para cambiar tu apuesta, cancela la espera y vuelve a entrar.</p>
     <% } %>
     <button class="button button-primary button-wide button-large" type="submit" <%= options.length && balance < game.min_amount ? 'disabled' : '' %>><%= options.length ? 'Confirmar apuesta y entrar a la fila' : 'Avisar que estoy listo' %></button>
     <% if (options.length && balance < game.min_amount) { %><p class="help">Tu saldo no alcanza para la apuesta mínima.</p><% } %>
   </form>
   <p class="help">Tu nombre aparecerá en el notebook del puesto. El encargado registrará el resultado.</p>
 </section>
+<script src="/roulette-rules.js" defer></script>
+<script src="/player-roulette.js" defer></script>
 <script src="/player-bet.js" defer></script>
 <%- include('partials/footer') %>

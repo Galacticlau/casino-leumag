@@ -7,8 +7,8 @@
   const format = (value) => new Intl.NumberFormat('es-CL').format(value);
   function update() {
     chips.forEach((chip) => chip.setAttribute('aria-pressed', String(Number(input.value) === Number(chip.dataset.betAmount))));
-    const option = form.querySelector('[name=betOption]:checked');
-    summary.textContent = option && input.value && input.checkValidity() ? `Tu apuesta: ${option.value} · $${format(Number(input.value))}` : 'Elige una opción y un monto dentro de tu saldo.';
+    const option = form.querySelector('[name=betOption]:checked') || (form.querySelector('#roulette-bet-option')?.value ? form.querySelector('#roulette-bet-option') : null);
+    summary.textContent = option && input.value && input.checkValidity() ? `Tu apuesta: ${(option.tagName === 'SELECT' ? option.selectedOptions[0].textContent : option.value)} · $${format(Number(input.value))}` : 'Elige una opción y un monto dentro de tu saldo.';
   }
   chips.forEach((chip) => chip.addEventListener('click', () => { input.value = chip.dataset.betAmount; update(); }));
   input.addEventListener('input', update);

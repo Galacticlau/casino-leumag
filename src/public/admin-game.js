@@ -38,7 +38,7 @@
     identity.append(element('h2', '', item.display_name), element('small', '', `@${item.username}`));
     const balance = element('div', 'queue-balance');
     balance.append(element('span', '', 'Saldo'), element('strong', '', format(item.balance)));
-    if (item.bet_amount) identity.append(element('div', 'player-bet-badge', `${item.bet_option} · $${format(item.bet_amount)}`));
+    if (item.bet_amount) identity.append(element('div', 'player-bet-badge', `${window.RouletteRules?.bets.find(b => b.id === item.bet_option)?.label || item.bet_option} · $${format(item.bet_amount)}`));
     head.append(identity, balance);
     return head;
   }
@@ -103,6 +103,10 @@
       return;
     }
 
+    if (app.dataset.roulette === 'true') {
+      window.renderRouletteRound({round, activeRoot, gameId, csrf});
+      return;
+    }
     const section = element('section', 'panel active-round-panel');
     const heading = element('div', 'section-title');
     const title = element('div');

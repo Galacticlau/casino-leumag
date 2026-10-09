@@ -415,6 +415,7 @@ app.post('/admin/game/:id/rounds/:roundId/finish', requireRole('game_admin', 'su
   try {
     const results = JSON.parse(String(req.body.results || '[]'));
     await completeRound({
+      winningNumber: req.body.winningNumber,
       gameId: req.params.id,
       roundId: req.params.roundId,
       results,

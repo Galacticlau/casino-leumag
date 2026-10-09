@@ -18,7 +18,7 @@ test('opciones editables y excepción para ruleta', () => {
   assert.deepEqual(parseOptions('Jugador\nBanca\nEmpate'),game.bet_options);
   assert.throws(()=>parseOptions('Banca\nbanca'));
   assert.throws(()=>parseOptions(''));
-  for(const name of ['Ruleta matemática']) assert.deepEqual(betOptions({...game,name}),[]);
+  assert.ok(betOptions({...game,name:'Ruleta matemática'}).includes('rojo'));
 });
 test('Mano Dorada siempre exige apuesta aunque falten opciones o lleguen como JSON de texto', () => {
   for (const options of [undefined, null, [], '', '[]', 'incorrecto', {}, [null, '']]) {
@@ -67,12 +67,10 @@ test('no inicia una participación antigua sin apuesta confirmada', async () => 
   await assert.rejects(() => startRound({gameId,requestIds:[id],createdBy:adminId}), /confirmar su apuesta/);
   await pool.query("UPDATE join_requests SET status='cancelled' WHERE id=$1", [id]);
 });
-test('ruleta admite entrada sin apuesta y no guardan montos enviados', async () => {
-  for (const slug of ['ruleta']) {
-    await pool.query('INSERT INTO games(name,slug) VALUES($1,$2)',[slug,slug]);
-    const id=await joinGame({slug,userId,amount:99999,option:'inventada'});
-    const request=(await pool.query('SELECT * FROM join_requests WHERE id=$1',[id])).rows[0];
-    assert.equal(request.bet_amount,null); assert.equal(request.bet_option,null);
-    await pool.query("UPDATE join_requests SET status='cancelled' WHERE id=$1",[id]);
-  }
+test('ruleta exige apuesta y valida límites específicos', async () => {
+ await pool.query("INSERT INTO games(name,slug) VALUES('Ruleta','ruleta')");
+ await assert.rejects(()=>joinGame({slug:'ruleta',userId,amount:900,option:'pleno-17'}),/inválida/);
+ const id=await joinGame({slug:'ruleta',userId,amount:800,option:'pleno-17'});
+ const r=(await pool.query('SELECT * FROM join_requests WHERE id=$1',[id])).rows[0];
+ assert.equal(r.bet_amount,800);assert.equal(r.bet_option,'pleno-17');
 });
