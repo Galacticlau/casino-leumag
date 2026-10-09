@@ -195,3 +195,25 @@ DO $$ BEGIN
   INSERT INTO app_migrations(name) VALUES('llave-magica-fixed-stake');
  END IF;
 END $$;
+
+-- Requested event reset: run exactly once, including on concurrent app startups.
+DO $$
+BEGIN
+  PERFORM pg_advisory_xact_lock(20261009, 111957);
+  IF NOT EXISTS (SELECT 1 FROM app_migrations WHERE name = 'event-reset-20261009-041157') THEN
+    LOCK TABLE users, games, game_admins, join_requests, game_rounds, transactions, app_sessions IN ACCESS EXCLUSIVE MODE;
+    DELETE FROM join_requests;
+    DELETE FROM game_rounds;
+    DELETE FROM transactions;
+    DELETE FROM users
+    WHERE role = 'player' AND (
+      LOWER(TRIM(display_name)) ~ '^participante([[:space:]_.-]|[0-9]|$)'
+      OR LOWER(TRIM(username)) ~ '^participante([[:space:]_.-]|[0-9]|$)'
+    );
+    UPDATE users SET balance = 10000, updated_at = NOW();
+    UPDATE games SET initial_bankroll = 30000;
+    UPDATE app_settings SET initial_balance = 10000, updated_at = NOW() WHERE id = 1;
+    DELETE FROM app_sessions;
+    INSERT INTO app_migrations(name) VALUES ('event-reset-20261009-041157');
+  END IF;
+END $$;
